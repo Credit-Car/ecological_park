@@ -40,6 +40,8 @@ dependencies:
   # Maps Packages
   intl: ^0.20.2
   flutter_map: ^8.2.2 # Or the latest version
+  google_maps_flutter: ^2.6.0
+  pointer_interceptor: ^0.10.1+1
   latlong2: ^0.9.0 # Dependency for flutter_map
   geocoding: ^4.0.0 # Or the latest version
   url_launcher: ^6.2.1 # If you want to open URLs like boarding passes

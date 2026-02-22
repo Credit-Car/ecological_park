@@ -1,441 +1,199 @@
 import 'package:flutter/material.dart';
-// --- Required Dependencies ---
-import 'package:flutter_map/flutter_map.dart'; 
-import 'package:latlong2/latlong.dart';
-// --- Mock Imports for Context (Assume these exist in your project) ---
-// import 'package:uuid/uuid.dart'; 
-// import 'package:intl/intl.dart'; 
-// import 'models/trip.dart'; 
-// import 'models/itinerary_item.dart'; 
-
-// --- Constants ---
-const Color kPrimaryBlue = Color(0xFF007AFF); 
-const Color kGreenDot = Color(0xFF1CB954); 
-const Color kBlueDot = Color(0xFF00BFFF); 
-
-// Mock Models for demonstration purposes
-class Trip {
-  final String destination;
-  final DateTime startDate;
-  const Trip({required this.destination, required this.startDate});
-}
-enum ItineraryItemType { stop }
-class ItineraryItem {
-  final String title;
-  final DateTime time;
-  final String? location;
-  final String? notes;
-  const ItineraryItem({required this.title, required this.time, this.location, this.notes});
-}
-// Mock UUID implementation
-class Uuid {
-  const Uuid();
-  String v4() => 'mock-uuid-${DateTime.now().millisecondsSinceEpoch}';
-}
-// Mock DateFormat implementation (using standard Dart)
-class DateFormat {
-  final String formatString;
-  const DateFormat(this.formatString);
-  String format(DateTime date) => 
-      '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')} ${date.hour >= 12 ? 'PM' : 'AM'}';
-}
-
-
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:pointer_interceptor/pointer_interceptor.dart';
+import 'models/place_item.dart';
 void main() {
-  runApp(MaterialApp(
-    title: 'Add Itinerary Stop',
-    // Mocking the required 'trip' object for the page
-    home: AddItineraryStopPage(trip: Trip(destination: 'Taipei', startDate: DateTime.now())), 
+  runApp(const MaterialApp(
     debugShowCheckedModeBanner: false,
+    home: AddItineraryStopPage(),
   ));
 }
-
-
 class AddItineraryStopPage extends StatefulWidget {
-  final Trip? trip; // Making it optional for this standalone demo, but expecting it in your real app
-
-  const AddItineraryStopPage({super.key, this.trip});
-
+  const AddItineraryStopPage({super.key});
   @override
   State<AddItineraryStopPage> createState() => _AddItineraryStopPageState();
 }
 
 class _AddItineraryStopPageState extends State<AddItineraryStopPage> {
   final TextEditingController _searchController = TextEditingController();
-  final TextEditingController _descriptionController = TextEditingController();
-  final TextEditingController _timeController = TextEditingController();
-  final MapController _mapController = MapController(); 
-  
-  // Dynamic State for Location/Time
-  Map<String, dynamic> _selectedPlace = {
-    'name': 'National Dong Hwa University',
-    'location_detail': 'No. 1, Sec. 2, Da Hsueh Rd., Shoufeng Township, Hualien County',
-    // --- Initial Coordinates set to NDHU ---
-    'latitude': 23.8967, 
-    'longitude': 121.5398,
-    'time': DateTime.now().add(const Duration(hours: 4)),
-  };
+  GoogleMapController? _mapController;
+  PlaceItem? _selectedPlace;
+  List<PlaceItem> _searchResults = [];
+  String _selectedCategory = "All";
 
-  @override
-  void initState() {
-    super.initState();
-    _searchController.text = _selectedPlace['name'];
-    _timeController.text = const DateFormat('h:mm a').format(_selectedPlace['time']);
-  }
-  
-  @override
-  void dispose() {
-    _searchController.dispose();
-    _descriptionController.dispose();
-    _timeController.dispose();
-    _mapController.dispose();
-    super.dispose();
-  }
-  
-  // Handles the time picker dialog (Simplified for standalone code)
-  Future<void> _selectTime(BuildContext context) async {
-    final TimeOfDay? picked = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay.fromDateTime(_selectedPlace['time']),
-    );
-    if (picked != null) {
-      final now = DateTime.now();
-      final newTime = DateTime(
-        widget.trip?.startDate.year ?? now.year, 
-        widget.trip?.startDate.month ?? now.month, 
-        widget.trip?.startDate.day ?? now.day, 
-        picked.hour, picked.minute,
-      );
-      
-      setState(() {
-        _selectedPlace['time'] = newTime;
-        _timeController.text = const DateFormat('h:mm a').format(newTime);
-      });
-    }
-  }
+  final LatLngBounds _ndhuBounds = LatLngBounds(
+    southwest: const LatLng(23.8850, 121.5280),
+    northeast: const LatLng(23.9050, 121.5550),
+  );
 
-  // New: Dynamic search function using setState and map controller
+  final List<PlaceItem> _PlaceItems = const [
+    PlaceItem(name: "NDHU Library", category: "Academic", detail: "Main university library", lat: 23.896943, lng: 121.5395882),
+    PlaceItem(name: "Administration Building", category: "Administrative", detail: "University admin office", lat: 23.8971, lng: 121.5412),
+    PlaceItem(name: "Gymnasium", category: "Sports", detail: "Sports and recreation center", lat: 23.8930, lng: 121.5360),
+    PlaceItem(name: "NDHU Stadium", category: "Sports", detail: "Athletic Field and Track Field", lat: 23.9016242, lng: 121.5375676),
+    PlaceItem(name: "Dorm V", category: "Dorm", detail: "Student housing area", lat: 23.8982, lng: 121.5375),
+  ];
+
   void _performSearch(String query) {
-    if (query.trim().isEmpty) return;
-    
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Searching for: $query...')),
-    );
-
-    // --- SIMULATED LOCATION SEARCH (Coordinates now centered around Hualien) ---
-    double newLat = 23.9934; // Hualien City Center
-    double newLon = 121.6033;
-    String newLocationDetail = 'Hualien City, Taiwan';
-
-    if (query.toLowerCase().contains('taroko')) {
-       newLat = 24.1670; newLon = 121.6247; newLocationDetail = 'Taroko National Park, Taiwan';
-    } else if (query.toLowerCase().contains('station')) {
-       newLat = 23.9934; newLon = 121.6033; newLocationDetail = 'Hualien Station, Taiwan';
-    } else if (query.toLowerCase().contains('ndhu') || query.toLowerCase().contains('dong hwa')) {
-       newLat = 23.8967; newLon = 121.5398; newLocationDetail = 'National Dong Hwa University, Shoufeng';
-    }
-
-    // Update state
-    setState(() {
-      _selectedPlace = {
-        'name': query,
-        'location_detail': newLocationDetail,
-        'latitude': newLat,
-        'longitude': newLon,
-        'time': DateTime.now().add(const Duration(hours: 2)),
-      };
-      _timeController.text = const DateFormat('h:mm a').format(_selectedPlace['time']);
-      
-      // Move the map camera to the new location
-      _mapController.move(
-        LatLng(newLat, newLon), 
-        17.0, // Zoom level is now 17.0
-      );
-    });
-    // --- END SIMULATION ---
-  }
-
-
-  void _addStopToItinerary() {
-    if (_selectedPlace['name'].isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a location first.')),
-      );
+    if (query.isEmpty) {
+      setState(() => _searchResults = []);
       return;
     }
-    
-    // Create ItineraryItem instance to return
-    final newItineraryItem = ItineraryItem(
-      title: 'Stop: ${_selectedPlace['name']}',
-      time: _selectedPlace['time'],
-      location: _selectedPlace['location_detail'],
-      notes: _descriptionController.text.trim().isNotEmpty 
-          ? 'Notes: ${_descriptionController.text}' : null,
-    );
+    setState(() {
+      _searchResults = _PlaceItems.where((place) {
+        bool matchesQuery = place.name.toLowerCase().contains(query.toLowerCase());
+        bool matchesCategory = _selectedCategory == "All" || place.category == _selectedCategory;
+        return matchesQuery && matchesCategory;
+      }).toList();
+    });
+  }
 
-    // In your real app, return the item:
-    // Navigator.of(context).pop(newItineraryItem);
-
-    // For demo, just show success:
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Added "${newItineraryItem.title}" to itinerary!'),
-      ),
-    );
+  void _onPlaceTap(PlaceItem place) {
+    setState(() {
+      _selectedPlace = place;
+      _searchResults = [];
+      _searchController.text = place.name;
+    });
+    _mapController?.animateCamera(CameraUpdate.newLatLngZoom(LatLng(place.lat, place.lng), 17.5));
   }
 
   @override
   Widget build(BuildContext context) {
+    const primaryColor = Color(0xFF5D5FEF);
+
     return Scaffold(
-      extendBodyBehindAppBar: true, 
+      backgroundColor: Colors.white,
       body: Stack(
         children: [
-          // 1. Dynamic Map View
-          MapDisplayWidget(
-            latitude: _selectedPlace['latitude'],
-            longitude: _selectedPlace['longitude'],
-            mapController: _mapController,
-          ),
 
-      
-
-          // 3. Sliding Bottom Sheet
-          DraggableScrollableSheet(
-            initialChildSize: 0.45, 
-            minChildSize: 0.45,
-            maxChildSize: 0.9,
-            builder: (context, scrollController) {
-              return Container(
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black12,
-                      blurRadius: 10,
-                      spreadRadius: 2,
-                    ),
-                  ],
-                ),
-                child: Column(
-                  children: [
-                    // Handle and Drag Indicator
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      child: Container(
-                        height: 5,
-                        width: 40,
-                        decoration: BoxDecoration(
-                          color: Colors.grey[300],
-                          borderRadius: BorderRadius.circular(2.5),
-                        ),
-                      ),
-                    ),
-                    
-                    Expanded(
-                      child: ListView(
-                        controller: scrollController,
-                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
-                        children: [
-                          const SizedBox(height: 10),
-
-                          // A. Dynamic Search Bar (Triggers map move)
-                          TextField(
-                            controller: _searchController,
-                            decoration: InputDecoration(
-                              labelText: 'Search Location',
-                              prefixIcon: const Icon(Icons.search),
-                              suffixIcon: IconButton(
-                                icon: const Icon(Icons.clear),
-                                onPressed: () => _searchController.clear(),
-                              ),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide.none,
-                              ),
-                              filled: true,
-                              fillColor: Colors.grey[100],
-                              contentPadding: const EdgeInsets.symmetric(vertical: 15, horizontal: 10),
-                            ),
-                            onSubmitted: _performSearch,
-                          ),
-                          
-                          const SizedBox(height: 20),
-
-                          // B. Dynamic Place Name & Time
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text('Destination', style: TextStyle(fontSize: 14, color: Colors.grey)),
-                                    Text(
-                                      _selectedPlace['name']!,
-                                      style: const TextStyle(
-                                        fontSize: 20,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      _selectedPlace['location_detail']!,
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        color: Colors.grey[600],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 20),
-                              // Time Input Field 
-                              SizedBox(
-                                width: 100,
-                                child: InkWell(
-                                  onTap: () => _selectTime(context),
-                                  child: AbsorbPointer(
-                                    child: TextField(
-                                      controller: _timeController,
-                                      readOnly: true,
-                                      textAlign: TextAlign.center,
-                                      decoration: InputDecoration(
-                                        labelText: 'Time',
-                                        labelStyle: TextStyle(color: Colors.teal.shade700),
-                                        suffixIcon: Icon(Icons.access_time, size: 20, color: Colors.teal.shade700),
-                                        border: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(12),
-                                          borderSide: BorderSide(color: Colors.teal.shade700),
-                                        ),
-                                        contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-                                      ),
-                                      style: const TextStyle(fontWeight: FontWeight.bold),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          
-                          const Divider(height: 30),
-
-                          // C. Description Input (User notes)
-                          const Text(
-                            'Description/Notes for this Stop',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          TextField(
-                            controller: _descriptionController,
-                            maxLines: 4,
-                            decoration: InputDecoration(
-                              hintText: 'Add a personal note about this stop...',
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: const BorderSide(color: Colors.grey),
-                              ),
-                              contentPadding: const EdgeInsets.all(12),
-                            ),
-                          ),
-
-                          const SizedBox(height: 30),
-                        ],
-                      ),
-                    ),
-                    
-                    // D. Bottom Action Button
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 10, 20, 30),
-                      child: SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: _addStopToItinerary,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.teal,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 18),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(15),
-                            ),
-                            elevation: 5,
-                          ),
-                          child: const Text(
-                            'Add to Itinerary',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              );
+          GoogleMap(
+            initialCameraPosition: const CameraPosition(target: LatLng(23.8967, 121.5398), zoom: 16),
+            cameraTargetBounds: CameraTargetBounds(_ndhuBounds),
+            minMaxZoomPreference: const MinMaxZoomPreference(14, 20),
+            onMapCreated: (controller) => _mapController = controller,
+            myLocationButtonEnabled: false,
+            zoomControlsEnabled: false,
+            markers: _selectedPlace == null ? {} : {
+              Marker(
+                markerId: const MarkerId("selected"),
+                position: LatLng(_selectedPlace!.lat, _selectedPlace!.lng),
+                icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueViolet),
+              )
             },
           ),
+          Positioned(
+            top: 50, left: 20, right: 20,
+            child: PointerInterceptor(
+              child: Column(
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(15),
+                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 5))],
+                    ),
+                    child: TextField(
+                      controller: _searchController,
+                      onChanged: _performSearch,
+                      decoration: const InputDecoration(
+                        hintText: "Where to in NDHU?",
+                        prefixIcon: Icon(Icons.search, color: primaryColor),
+                        border: InputBorder.none,
+                        contentPadding: EdgeInsets.symmetric(vertical: 15),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: ["All", "Academic", "Dorm", "Sports", "Administrative"].map((cat) => _buildFilterChip(cat)).toList(),
+                    ),
+                  ),
+                  // Search Results Dropdown
+                  if (_searchResults.isNotEmpty)
+                    Container(
+                      margin: const EdgeInsets.only(top: 5),
+                      constraints: const BoxConstraints(maxHeight: 250),
+                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(15)),
+                      child: ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: _searchResults.length,
+                        itemBuilder: (context, i) => ListTile(
+                          title: Text(_searchResults[i].name),
+                          subtitle: Text(_searchResults[i].category),
+                          onTap: () => _onPlaceTap(_searchResults[i]),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+
+          // Details Card
+          if (_selectedPlace != null)
+            Positioned(
+              bottom: 30, left: 20, right: 20,
+              child: PointerInterceptor(
+                child: Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(25),
+                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 20)],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(_selectedPlace!.name, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                              Text(_selectedPlace!.detail, style: const TextStyle(color: Colors.grey)),
+                            ],
+                          ),
+                          const Icon(Icons.directions, color: primaryColor, size: 30),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: primaryColor,
+                          minimumSize: const Size(double.infinity, 55),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                        ),
+                        onPressed: () => print("Location Confirmed"),
+                        child: const Text("Add to Itinerary", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );
   }
-}
 
-// --- Dynamic Map Widget using FlutterMap ---
-class MapDisplayWidget extends StatelessWidget {
-  final double latitude;
-  final double longitude;
-  final MapController mapController;
-  
-  const MapDisplayWidget({
-    super.key, 
-    required this.latitude, 
-    required this.longitude,
-    required this.mapController,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    // Initial map center is based on the dynamic state variables
-    final center = LatLng(latitude, longitude);
-
-    return FlutterMap(
-      mapController: mapController,
-      options: MapOptions(
-        initialCenter: center,
-        initialZoom: 17.0, // <-- ZOOM LEVEL INCREASED HERE
-        interactionOptions: const InteractionOptions(
-          flags: InteractiveFlag.all, 
-        ),
+  Widget _buildFilterChip(String label) {
+    bool isSelected = _selectedCategory == label;
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: ChoiceChip(
+        label: Text(label),
+        selected: isSelected,
+        selectedColor: const Color(0xFF5D5FEF).withValues(alpha: 0.2),
+        labelStyle: TextStyle(color: isSelected ? const Color(0xFF5D5FEF) : Colors.black87, fontWeight: FontWeight.bold),
+        onSelected: (val) => setState(() {
+          _selectedCategory = label;
+          _performSearch(_searchController.text);
+        }),
       ),
-      children: [
-        // 1. Tile Layer (OpenStreetMap default tiles)
-        TileLayer(
-          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-          userAgentPackageName: 'com.example.app', 
-        ),
-        
-        // 2. Marker Layer for the Selected Stop (Only one central marker)
-        MarkerLayer(
-          markers: [
-            Marker(
-              width: 50.0,
-              height: 50.0,
-              point: center,
-              child: const Icon(
-                Icons.location_on,
-                color: kPrimaryBlue, // Selected location marker
-                size: 40.0,
-              ),
-            ),
-          ],
-        ),
-        
-        // 3. PolylineLayer is intentionally omitted to remove the route line.
-      ],
     );
   }
 }

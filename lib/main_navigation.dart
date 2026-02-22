@@ -44,7 +44,7 @@ class _MainNavigationState extends ConsumerState<MainNavigation> {
   late final List<Widget> _pages = [
     const Dashboard(),
     const TripsPage(),
-    const AddItineraryStopPage(),
+    AddItineraryStopPage(),
     const ChatbotApp(),
     ProfileMenuScreen(),
   ];
