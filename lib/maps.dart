@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:pointer_interceptor/pointer_interceptor.dart';
-import 'models/place_item.dart';
+import 'models/places.dart';
 void main() {
   runApp(const MaterialApp(
     debugShowCheckedModeBanner: false,
@@ -17,8 +17,8 @@ class AddItineraryStopPage extends StatefulWidget {
 class _AddItineraryStopPageState extends State<AddItineraryStopPage> {
   final TextEditingController _searchController = TextEditingController();
   GoogleMapController? _mapController;
-  PlaceItem? _selectedPlace;
-  List<PlaceItem> _searchResults = [];
+  Places? _selectedPlace;
+  List<Places> _searchResults = [];
   String _selectedCategory = "All";
 
   final LatLngBounds _ndhuBounds = LatLngBounds(
@@ -26,12 +26,12 @@ class _AddItineraryStopPageState extends State<AddItineraryStopPage> {
     northeast: const LatLng(23.9050, 121.5550),
   );
 
-  final List<PlaceItem> _PlaceItems = const [
-    PlaceItem(name: "NDHU Library", category: "Academic", detail: "Main university library", lat: 23.896943, lng: 121.5395882),
-    PlaceItem(name: "Administration Building", category: "Administrative", detail: "University admin office", lat: 23.8971, lng: 121.5412),
-    PlaceItem(name: "Gymnasium", category: "Sports", detail: "Sports and recreation center", lat: 23.8930, lng: 121.5360),
-    PlaceItem(name: "NDHU Stadium", category: "Sports", detail: "Athletic Field and Track Field", lat: 23.9016242, lng: 121.5375676),
-    PlaceItem(name: "Dorm V", category: "Dorm", detail: "Student housing area", lat: 23.8982, lng: 121.5375),
+  final List<Places> _Placess = const [
+    Places(name: "NDHU Library", category: "Academic", detail: "Main university library", lat: 23.896943, lng: 121.5395882),
+    Places(name: "Administration Building", category: "Administrative", detail: "University admin office", lat: 23.8971, lng: 121.5412),
+    Places(name: "Gymnasium", category: "Sports", detail: "Sports and recreation center", lat: 23.8930, lng: 121.5360),
+    Places(name: "NDHU Stadium", category: "Sports", detail: "Athletic Field and Track Field", lat: 23.9016242, lng: 121.5375676),
+    Places(name: "Dorm V", category: "Dorm", detail: "Student housing area", lat: 23.8982, lng: 121.5375),
   ];
 
   void _performSearch(String query) {
@@ -40,7 +40,7 @@ class _AddItineraryStopPageState extends State<AddItineraryStopPage> {
       return;
     }
     setState(() {
-      _searchResults = _PlaceItems.where((place) {
+      _searchResults = _Placess.where((place) {
         bool matchesQuery = place.name.toLowerCase().contains(query.toLowerCase());
         bool matchesCategory = _selectedCategory == "All" || place.category == _selectedCategory;
         return matchesQuery && matchesCategory;
@@ -48,7 +48,7 @@ class _AddItineraryStopPageState extends State<AddItineraryStopPage> {
     });
   }
 
-  void _onPlaceTap(PlaceItem place) {
+  void _onPlaceTap(Places place) {
     setState(() {
       _selectedPlace = place;
       _searchResults = [];
@@ -187,7 +187,7 @@ class _AddItineraryStopPageState extends State<AddItineraryStopPage> {
       child: ChoiceChip(
         label: Text(label),
         selected: isSelected,
-        selectedColor: const Color(0xFF5D5FEF).withValues(alpha: 0.2),
+        selectedColor: const Color(0xFF5D5FEF).withOpacity(0.2),
         labelStyle: TextStyle(color: isSelected ? const Color(0xFF5D5FEF) : Colors.black87, fontWeight: FontWeight.bold),
         onSelected: (val) => setState(() {
           _selectedCategory = label;

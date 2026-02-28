@@ -1,11 +1,10 @@
 // lib/pages/add_itinerary_item_page.dart
 import 'package:flutter/material.dart';
-import '../models/trip.dart';
+import '../models/route.dart';
 import '../models/itinerary_item.dart';
 
 class AddItineraryItemPage extends StatefulWidget {
-  final Trip trip;
-
+  final Route trip;
   const AddItineraryItemPage({super.key, required this.trip});
 
   @override
