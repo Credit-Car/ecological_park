@@ -50,7 +50,7 @@ class WelcomePage extends StatelessWidget {
       ),
       initialRoute: '/',
       routes: {
-        '/': (context) => const MainNavigation(),
+        '/': (context) => const LandingPage(),
         // '/': (context) => const AdminLoginPage(),
         '/admin': (context) => const AdminLoginPage(),
       },
