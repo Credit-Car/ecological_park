@@ -2,6 +2,7 @@ import 'dart:convert'; // For JSON encoding/decoding
 import 'dart:io'; // To detect platform for localhost
 import 'package:flutter/foundation.dart'; // To detect web
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // For LogicalKeyboardKey
 import 'package:http/http.dart' as http; // HTTP requests
 import 'package:uuid/uuid.dart'; // For Session ID generation
 
@@ -27,37 +28,46 @@ class ChatbotApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Guidebook Chatbot Input',
+      title: 'Guidebook Chatbot',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         fontFamily: 'Inter',
+        colorScheme: ColorScheme.fromSeed(seedColor: kGreenAccent),
         scaffoldBackgroundColor: Colors.white,
+        useMaterial3: true,
         appBarTheme: const AppBarTheme(
           backgroundColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
           elevation: 0,
-          foregroundColor: Colors.black,
+          centerTitle: true,
+          titleTextStyle: TextStyle(
+            color: Colors.black87,
+            fontWeight: FontWeight.w600,
+            fontSize: 18,
+          ),
         ),
-        useMaterial3: true,
       ),
-      home: const ChatbotInputScreen(),
+      home: const ChatbotScreen(),
     );
   }
 }
 
-class ChatbotInputScreen extends StatefulWidget {
-  const ChatbotInputScreen({super.key});
+class ChatbotScreen extends StatefulWidget {
+  const ChatbotScreen({super.key});
 
   @override
-  State<ChatbotInputScreen> createState() => _ChatbotInputScreenState();
+  State<ChatbotScreen> createState() => _ChatbotScreenState();
 }
 
-class _ChatbotInputScreenState extends State<ChatbotInputScreen> {
+class _ChatbotScreenState extends State<ChatbotScreen> {
   // Store messages here. Format: {text: String, isUser: bool}
   final List<Map<String, dynamic>> _messages = [];
   
   // Controller to read and clear input
   final TextEditingController _textController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  
+  bool _isTyping = false;
 
   // Session Management
   late String _sessionId;
@@ -65,25 +75,23 @@ class _ChatbotInputScreenState extends State<ChatbotInputScreen> {
   @override
   void initState() {
     super.initState();
-    // Generate a unique session ID on startup, similar to JS `crypto.randomUUID()`
     _sessionId = const Uuid().v4();
   }
 
   // Handle sending a message
   void _handleSubmitted(String text) {
-    if (text.trim().isEmpty) return; // Don't send empty messages
+    final trimmedText = text.trim();
+    if (trimmedText.isEmpty) return; 
 
-    _textController.clear(); // Clear input field
+    _textController.clear();
 
-    // 1. Add User Message to UI immediately
     setState(() {
-      _messages.add({'text': text.trim(), 'isUser': true});
+      _messages.add({'text': trimmedText, 'isUser': true});
+      _isTyping = true;
     });
     
     _scrollToBottom();
-
-    // 2. Send to Backend
-    _sendMessageToBackend(text.trim());
+    _sendMessageToBackend(trimmedText);
   }
 
   // Implements the specific JSON payload structure from chat-widget.js
@@ -96,14 +104,13 @@ class _ChatbotInputScreenState extends State<ChatbotInputScreen> {
 
     final Uri url = Uri.parse(urlString);
 
-    // Construct Payload mirroring chat-widget.js `sendMessage` function
     final Map<String, dynamic> payload = {
       "action": "sendMessage",
       "sessionId": _sessionId,
       "route": kRoute,
       "chatInput": userQuery,
       "metadata": {
-        "userId": "" // Empty as per JS example
+        "userId": "" 
       }
     };
 
@@ -117,8 +124,6 @@ class _ChatbotInputScreenState extends State<ChatbotInputScreen> {
       if (response.statusCode == 200) {
         final dynamic data = jsonDecode(response.body);
         
-        // Handle response format: JS handles both Array and Object
-        // logic: Array.isArray(data) ? data[0].output : data.output;
         String botOutput = "No response text found.";
         
         if (data is List && data.isNotEmpty) {
@@ -129,8 +134,14 @@ class _ChatbotInputScreenState extends State<ChatbotInputScreen> {
 
         if (mounted) {
           setState(() {
+            _isTyping = false;
+            // Clean up thinking process if exposed
+            final cleanOutput = botOutput.contains('</think>') 
+                ? botOutput.split('</think>').last.trim() 
+                : botOutput;
+                
             _messages.add({
-              'text': botOutput.split('</think>').last.trim(),
+              'text': cleanOutput,
               'isUser': false
             });
           });
@@ -147,9 +158,11 @@ class _ChatbotInputScreenState extends State<ChatbotInputScreen> {
   void _handleError(String errorMsg) {
     if (mounted) {
       setState(() {
+        _isTyping = false;
         _messages.add({
-          'text': "Error: Could not connect to assistant. $errorMsg",
-          'isUser': false
+          'text': "Error: Could not connect to assistant.",
+          'isUser': false,
+          'isError': true,
         });
       });
       _scrollToBottom();
@@ -157,13 +170,12 @@ class _ChatbotInputScreenState extends State<ChatbotInputScreen> {
   }
 
   void _scrollToBottom() {
-    // Wait for frame to build so list height is updated
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
           _scrollController.position.maxScrollExtent,
           duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
+          curve: Curves.easeOutCubic,
         );
       }
     });
@@ -172,17 +184,29 @@ class _ChatbotInputScreenState extends State<ChatbotInputScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.smart_toy_outlined, color: kGreenAccent),
+            SizedBox(width: 8),
+            Text('Travel Assistant'),
+          ],
+        ),
+      ),
       body: SafeArea(
         child: Column(
           children: <Widget>[
-            // --- 1. Dynamic Content Area ---
             Expanded(
               child: _messages.isEmpty 
-                  ? _buildWelcomeView() // Show Sphere if no messages
-                  : _buildChatListView(), // Show Chat if messages exist
+                  ? _buildWelcomeView() 
+                  : _buildChatListView(),
             ),
-
-            // --- 2. Fixed Input Area ---
+            if (_isTyping)
+              const LinearProgressIndicator(
+                backgroundColor: Colors.transparent, 
+                valueColor: AlwaysStoppedAnimation<Color>(kGreenAccent)
+              ),
             BottomInputArea(
               controller: _textController,
               onSubmitted: _handleSubmitted,
@@ -193,91 +217,84 @@ class _ChatbotInputScreenState extends State<ChatbotInputScreen> {
     );
   }
 
-  // The original "Welcome" view with the Green Sphere
   Widget _buildWelcomeView() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 24.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          const SizedBox(height: 32),
-          Center(
-            child: Container(
-              width: 80,
-              height: 80,
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 32.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            Container(
+              padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
+                color: kGreenAccent.withOpacity(0.1),
                 shape: BoxShape.circle,
-                color: Colors.white,
-                boxShadow: [
-                  BoxShadow(
-                    color: kGreenAccent.withOpacity(0.5),
-                    blurRadius: 25,
-                    spreadRadius: 8,
-                  ),
-                ],
-                gradient: RadialGradient(
-                  colors: [
-                    kGreenAccent.withOpacity(0.8),
-                    kGreenAccent.withOpacity(0.3),
-                    Colors.white.withOpacity(0),
-                  ],
-                  stops: const [0.0, 0.4, 1.0],
-                ),
+              ),
+              child: const Icon(
+                Icons.chat_bubble_outline_rounded,
+                size: 64,
+                color: kGreenAccent,
               ),
             ),
-          ),
-          const SizedBox(height: 40),
-          const Text(
-            'Send a message to start chat.',
-            style: TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
+            const SizedBox(height: 24),
+            const Text(
+              'How can I help you?',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+              ),
+              textAlign: TextAlign.center,
             ),
-          ),
-          const SizedBox(height: 24),
-          const Text(
-            'Note: The conversation is not saved locally, but maintains session ID.',
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.grey,
+            const SizedBox(height: 12),
+            Text(
+              'Ask about destinations, itineraries, or travel tips.',
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey[600],
+                height: 1.5,
+              ),
+              textAlign: TextAlign.center,
             ),
-          ),
-          const SizedBox(height: 32),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  // The Chat List View
   Widget _buildChatListView() {
     return ListView.builder(
       controller: _scrollController,
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 20),
       itemCount: _messages.length,
       itemBuilder: (context, index) {
         final msg = _messages[index];
         final isUser = msg['isUser'] as bool;
+        final isError = msg['isError'] ?? false;
+        
         return Align(
           alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
           child: Container(
-            margin: const EdgeInsets.symmetric(vertical: 5),
+            margin: const EdgeInsets.only(bottom: 12),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: isUser ? kUserBubbleColor : kLightGrey,
+              color: isUser 
+                  ? kUserBubbleColor 
+                  : (isError ? Colors.red[50] : kBotBubbleColor),
               borderRadius: BorderRadius.only(
-                topLeft: const Radius.circular(20),
-                topRight: const Radius.circular(20),
-                bottomLeft: isUser ? const Radius.circular(20) : Radius.zero,
-                bottomRight: isUser ? Radius.zero : const Radius.circular(20),
+                topLeft: const Radius.circular(16),
+                topRight: const Radius.circular(16),
+                bottomLeft: isUser ? const Radius.circular(16) : const Radius.circular(2),
+                bottomRight: isUser ? const Radius.circular(2) : const Radius.circular(16),
               ),
             ),
-            constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.85),
+            constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.8),
             child: Text(
               msg['text'],
               style: TextStyle(
-                color: isUser ? Colors.white : Colors.black87,
+                color: isUser ? Colors.white : (isError ? Colors.red[900] : Colors.black87),
                 fontSize: 15,
-                height: 1.4, // Better line height for multiline text
+                height: 1.4,
               ),
             ),
           ),
@@ -287,8 +304,9 @@ class _ChatbotInputScreenState extends State<ChatbotInputScreen> {
   }
 }
 
+
 // --- Modified Input Area ---
-class BottomInputArea extends StatelessWidget {
+class BottomInputArea extends StatefulWidget {
   final TextEditingController controller;
   final Function(String) onSubmitted;
 
@@ -297,6 +315,20 @@ class BottomInputArea extends StatelessWidget {
     required this.controller,
     required this.onSubmitted,
   });
+
+  @override
+  State<BottomInputArea> createState() => _BottomInputAreaState();
+}
+
+class _BottomInputAreaState extends State<BottomInputArea> {
+  // FocusNode not needed for CallbackShortcuts if we don't need other focus logic
+  final FocusNode _focusNode = FocusNode();
+
+  @override
+  void dispose() {
+    _focusNode.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -319,18 +351,28 @@ class BottomInputArea extends StatelessWidget {
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 12.0),
-                    child: TextField(
-                      controller: controller,
-                      maxLines: null, 
-                      minLines: 1,
-                      keyboardType: TextInputType.multiline,
-                      textInputAction: TextInputAction.newline,
-                      decoration: const InputDecoration(
-                        hintText: 'Aa',
-                        border: InputBorder.none,
-                        contentPadding: EdgeInsets.symmetric(vertical: 14.0), 
+                    child: CallbackShortcuts(
+                      bindings: {
+                        const SingleActivator(LogicalKeyboardKey.enter, includeRepeats: false): () {
+                          widget.onSubmitted(widget.controller.text);
+                        },
+                      },
+                      child: TextField(
+                        focusNode: _focusNode,
+                        controller: widget.controller,
+                        maxLines: 5, 
+                        minLines: 1,
+                        maxLength: 300,
+                        keyboardType: TextInputType.multiline,
+                        textInputAction: TextInputAction.newline,
+                        decoration: const InputDecoration(
+                          hintText: 'Aa',
+                          border: InputBorder.none,
+                          counterText: '', // Hide default counter
+                          contentPadding: EdgeInsets.symmetric(vertical: 14.0), 
+                        ),
+                        style: const TextStyle(fontSize: 14),
                       ),
-                      style: const TextStyle(fontSize: 14),
                     ),
                   ),
                 ),
@@ -350,7 +392,7 @@ class BottomInputArea extends StatelessWidget {
                         ),
                         child: IconButton(
                           icon: const Icon(Icons.send, color: Colors.white, size: 20),
-                          onPressed: () => onSubmitted(controller.text),
+                          onPressed: () => widget.onSubmitted(widget.controller.text),
                           tooltip: 'Send Message',
                         ),
                       ),

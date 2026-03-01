@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import '../models/trip.dart';
+// import '../models/trip.dart';
 import '../models/places.dart';
+import '../models/trip.dart';
 
 class AddTripStopPage extends StatefulWidget {
   final Trip trip;
