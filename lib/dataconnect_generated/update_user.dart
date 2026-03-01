@@ -4,6 +4,8 @@ class UpdateUserVariablesBuilder {
   String userId;
   Optional<String> _displayname = Optional.optional(nativeFromJson, nativeToJson);
   Optional<String> _email = Optional.optional(nativeFromJson, nativeToJson);
+  Optional<String> _sessionToken = Optional.optional(nativeFromJson, nativeToJson);
+  Optional<Timestamp> _sessionExpiry = Optional.optional((json) => json['sessionExpiry'] = Timestamp.fromJson(json['sessionExpiry']), defaultSerializer);
 
   final FirebaseDataConnect _dataConnect;  UpdateUserVariablesBuilder displayname(String? t) {
    _displayname.value = t;
@@ -11,6 +13,14 @@ class UpdateUserVariablesBuilder {
   }
   UpdateUserVariablesBuilder email(String? t) {
    _email.value = t;
+   return this;
+  }
+  UpdateUserVariablesBuilder sessionToken(String? t) {
+   _sessionToken.value = t;
+   return this;
+  }
+  UpdateUserVariablesBuilder sessionExpiry(Timestamp? t) {
+   _sessionExpiry.value = t;
    return this;
   }
 
@@ -22,7 +32,7 @@ class UpdateUserVariablesBuilder {
   }
 
   MutationRef<UpdateUserData, UpdateUserVariables> ref() {
-    UpdateUserVariables vars= UpdateUserVariables(userId: userId,displayname: _displayname,email: _email,);
+    UpdateUserVariables vars= UpdateUserVariables(userId: userId,displayname: _displayname,email: _email,sessionToken: _sessionToken,sessionExpiry: _sessionExpiry,);
     return _dataConnect.mutation("UpdateUser", dataDeserializer, varsSerializer, vars);
   }
 }
@@ -102,6 +112,8 @@ class UpdateUserVariables {
   final String userId;
   late final Optional<String>displayname;
   late final Optional<String>email;
+  late final Optional<String>sessionToken;
+  late final Optional<Timestamp>sessionExpiry;
   @Deprecated('fromJson is deprecated for Variable classes as they are no longer required for deserialization.')
   UpdateUserVariables.fromJson(Map<String, dynamic> json):
   
@@ -116,6 +128,14 @@ class UpdateUserVariables {
     email = Optional.optional(nativeFromJson, nativeToJson);
     email.value = json['email'] == null ? null : nativeFromJson<String>(json['email']);
   
+  
+    sessionToken = Optional.optional(nativeFromJson, nativeToJson);
+    sessionToken.value = json['sessionToken'] == null ? null : nativeFromJson<String>(json['sessionToken']);
+  
+  
+    sessionExpiry = Optional.optional((json) => json['sessionExpiry'] = Timestamp.fromJson(json['sessionExpiry']), defaultSerializer);
+    sessionExpiry.value = json['sessionExpiry'] == null ? null : Timestamp.fromJson(json['sessionExpiry']);
+  
   }
   @override
   bool operator ==(Object other) {
@@ -129,11 +149,13 @@ class UpdateUserVariables {
     final UpdateUserVariables otherTyped = other as UpdateUserVariables;
     return userId == otherTyped.userId && 
     displayname == otherTyped.displayname && 
-    email == otherTyped.email;
+    email == otherTyped.email && 
+    sessionToken == otherTyped.sessionToken && 
+    sessionExpiry == otherTyped.sessionExpiry;
     
   }
   @override
-  int get hashCode => Object.hashAll([userId.hashCode, displayname.hashCode, email.hashCode]);
+  int get hashCode => Object.hashAll([userId.hashCode, displayname.hashCode, email.hashCode, sessionToken.hashCode, sessionExpiry.hashCode]);
   
 
   Map<String, dynamic> toJson() {
@@ -145,6 +167,12 @@ class UpdateUserVariables {
     if(email.state == OptionalState.set) {
       json['email'] = email.toJson();
     }
+    if(sessionToken.state == OptionalState.set) {
+      json['sessionToken'] = sessionToken.toJson();
+    }
+    if(sessionExpiry.state == OptionalState.set) {
+      json['sessionExpiry'] = sessionExpiry.toJson();
+    }
     return json;
   }
 
@@ -152,6 +180,8 @@ class UpdateUserVariables {
     required this.userId,
     required this.displayname,
     required this.email,
+    required this.sessionToken,
+    required this.sessionExpiry,
   });
 }
 

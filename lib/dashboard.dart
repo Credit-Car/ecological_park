@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:travel_app/dataconnect_generated/generated.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
@@ -44,7 +46,7 @@ class _DashboardState extends State<Dashboard> {
       name: e.name,
       category: 'Restaurant', // Or derive from description/other fields if available
       image: (e.images != null && e.images!.isNotEmpty) 
-          ? e.images!.first 
+          ? e.images!.join(',') 
           : 'https://via.placeholder.com/150',
       description: e.description ?? 'No description',
       location: e.coordinates,
@@ -120,7 +122,7 @@ class _DashboardState extends State<Dashboard> {
   void _refreshDashboard() {
     setState(() {
       _searchController.clear();
-      // Shuffle the existing list to get a new set of 7
+      // shuffle the existing list to get a new set of 7
       _allDestinations.shuffle();
       filteredDestinations = _allDestinations.take(7).toList();
     });
@@ -150,7 +152,7 @@ class _DashboardState extends State<Dashboard> {
             ClipRRect(
               borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
               child: CachedNetworkImage(
-                imageUrl: data.image,
+                imageUrl: data.image.split(',').first,
                 memCacheHeight: (180 * MediaQuery.of(context).devicePixelRatio).toInt(), // Optimize memory usage
                 height: 180,
                 width: double.infinity,
@@ -222,13 +224,22 @@ class _DashboardState extends State<Dashboard> {
   }
 }
 
-class DetailsPage extends StatelessWidget {
+
+class DetailsPage extends StatefulWidget {
   final Destination destination;
   const DetailsPage({super.key, required this.destination});
 
   @override
+  State<DetailsPage> createState() => _DetailsPageState();
+}
+
+class _DetailsPageState extends State<DetailsPage> {
+  int _currentPage = 0;
+
+  @override
   Widget build(BuildContext context) {
     const primaryColor = Color(0xFF5D5FEF);
+    final List<String> images = widget.destination.image.split(',');
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -236,13 +247,55 @@ class DetailsPage extends StatelessWidget {
         children: [
           Positioned(
             top: 0, left: 0, right: 0,
-            child: Container(
+            child: SizedBox(
               height: MediaQuery.of(context).size.height * 0.45,
-              decoration: BoxDecoration(
-                image: DecorationImage(
-                  image: NetworkImage(destination.image),
-                  fit: BoxFit.cover,
-                ),
+              child: Stack(
+                alignment: Alignment.bottomCenter,
+                children: [
+                  PageView.builder(
+                    itemCount: images.length,
+                    onPageChanged: (index) {
+                      setState(() {
+                        _currentPage = index;
+                      });
+                    },
+                    itemBuilder: (context, index) {
+                      return CachedNetworkImage(
+                        imageUrl: images[index],
+                        fit: BoxFit.cover,
+                        placeholder: (context, url) => Container(
+                          color: Colors.grey[200],
+                          child: const Center(child: CircularProgressIndicator()),
+                        ),
+                        errorWidget: (context, url, error) => Container(
+                          color: Colors.grey[300],
+                          child: const Center(child: Icon(Icons.image_not_supported)),
+                        ),
+                      );
+                    },
+                  ),
+                  if (images.length > 1)
+                    Positioned(
+                      bottom: 50, // Just above the white content sheet
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: List.generate(images.length, (index) {
+                          return AnimatedContainer(
+                            duration: const Duration(milliseconds: 300),
+                            margin: const EdgeInsets.symmetric(horizontal: 4.0),
+                            width: _currentPage == index ? 12.0 : 8.0,
+                            height: _currentPage == index ? 12.0 : 8.0,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: _currentPage == index 
+                                  ? Colors.white 
+                                  : Colors.white.withOpacity(0.5),
+                            ),
+                          );
+                        }),
+                      ),
+                    ),
+                ],
               ),
             ),
           ),
@@ -252,7 +305,7 @@ class DetailsPage extends StatelessWidget {
             top: 50,
             left: 20,
             child: CircleAvatar(
-              backgroundColor: Colors.white.withOpacity(0.2),
+              backgroundColor: const Color.fromARGB(111, 158, 158, 158),
               child: IconButton(
                 icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 18),
                 onPressed: () => Navigator.pop(context),
@@ -279,14 +332,14 @@ class DetailsPage extends StatelessWidget {
                       children: [
                         Expanded(
                           child: Text(
-                            destination.name,
+                            widget.destination.name,
                             style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                           ),
                         ),
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
-                            Text(destination.price, style: const TextStyle(fontSize: 22, color: primaryColor, fontWeight: FontWeight.bold)),
+                            Text(widget.destination.price, style: const TextStyle(fontSize: 22, color: primaryColor, fontWeight: FontWeight.bold)),
                             const Text("/person", style: TextStyle(color: Colors.grey, fontSize: 12)),
                           ],
                         ),
@@ -296,7 +349,41 @@ class DetailsPage extends StatelessWidget {
                     Row(
                       children: [
                         const Icon(Icons.location_on, color: Colors.blueAccent, size: 18),
-                        Text(' ${destination.location}', style: const TextStyle(color: Colors.grey)),
+                        Text(' ${widget.destination.location}', style: const TextStyle(color: Colors.grey)),
+
+                        Spacer(),
+
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            // Copy location to clipboard
+                            // import 'package:flutter/services.dart'; needs to be imported if not available, 
+                            // but usually available via material.dart -> services.dart
+                            // actually it is in services.dart. 
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              Clipboard.setData(ClipboardData(text: widget.destination.location)).then((_) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Location copied to clipboard'),
+                                    duration: Duration(seconds: 2),
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
+                              });
+                            });
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.grey[100],
+                            foregroundColor: Colors.grey,
+                            elevation: 0,
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
+                              side: BorderSide(color: Colors.grey.shade300),
+                            ),
+                          ),
+                          icon: const Icon(Icons.copy, size: 16),
+                          label: const Text('Copy', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                        )
                       ],
                     ),
                     const SizedBox(height: 20),
@@ -309,7 +396,7 @@ class DetailsPage extends StatelessWidget {
                         const Text("People Reviewed", style: TextStyle(color: Colors.grey, fontSize: 13)),
                         const Spacer(),
                         const Icon(Icons.star, color: Colors.orange, size: 20),
-                        Text(" ${destination.rating} ", style: const TextStyle(fontWeight: FontWeight.bold)),
+                        Text(" ${widget.destination.rating} ", style: const TextStyle(fontWeight: FontWeight.bold)),
                         const Text("/5", style: TextStyle(color: Colors.grey)),
                       ],
                     ),
@@ -321,9 +408,13 @@ class DetailsPage extends StatelessWidget {
                     const SizedBox(height: 15),
 
                     // Dynamic Description
-                    Text(
-                      destination.description,
-                      style: const TextStyle(color: Colors.black54, height: 1.5),
+                    // display the decription in markdown format with line breaks and paragraphs
+                    
+                    MarkdownBody(
+                      data: widget.destination.description,
+                      styleSheet: MarkdownStyleSheet(
+                        p: const TextStyle(color: Colors.black54, height: 1.5),
+                      ),
                     ),
                     const SizedBox(height: 100),
                   ],
@@ -332,17 +423,38 @@ class DetailsPage extends StatelessWidget {
             ),
           ),
           
-          // Button
+          // Button to new view to display the place in embedded google maps
           Positioned(
             bottom: 20, left: 20, right: 20,
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.teal,
-                padding: const EdgeInsets.symmetric(vertical: 18),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-              ),
-              onPressed: () {},
-              child: const Text('See Maps', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.teal,
+                      padding: const EdgeInsets.symmetric(vertical: 18),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                    ),
+                    onPressed: () {},
+                    icon: const Icon(Icons.library_add_check_outlined, color: Colors.white),
+                    label: const Text('Add ', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.teal,
+                      padding: const EdgeInsets.symmetric(vertical: 18),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                    ),
+                    onPressed: () {},
+                    icon: const Icon(Icons.map_outlined, color: Colors.white),
+                    label: const Text('View', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                  ),
+                ),
+              ],
             ),
           )
         ],

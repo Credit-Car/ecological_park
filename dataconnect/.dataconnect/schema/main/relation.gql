@@ -178,6 +178,24 @@ extend type User {
     distinct: Boolean = false
   ): Int! @fdc_generated(from: "User.email", purpose: QUERY_COUNT)
   """
+  ✨ Count the number of rows in the `User` table where the `sessionExpiry` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  sessionExpiry_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "User.sessionExpiry", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `User` table where the `sessionToken` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  sessionToken_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "User.sessionToken", purpose: QUERY_COUNT)
+  """
   ✨ Count the number of rows in the `User` table where the `type` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
   """
   type_count(
@@ -200,9 +218,17 @@ extend type User {
   """
   createdAt_min: Timestamp @fdc_generated(from: "User.createdAt", purpose: QUERY_MIN)
   """
+  ✨ Minimum of the `sessionExpiry` field in the `User` table.
+  """
+  sessionExpiry_min: Timestamp @fdc_generated(from: "User.sessionExpiry", purpose: QUERY_MIN)
+  """
   ✨ Maximum of the `createdAt` field in the `User` table.
   """
   createdAt_max: Timestamp @fdc_generated(from: "User.createdAt", purpose: QUERY_MAX)
+  """
+  ✨ Maximum of the `sessionExpiry` field in the `User` table.
+  """
+  sessionExpiry_max: Timestamp @fdc_generated(from: "User.sessionExpiry", purpose: QUERY_MAX)
   """
   A generated field that is used for caching results in SDKs.
   """

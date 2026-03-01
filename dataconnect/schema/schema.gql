@@ -9,6 +9,8 @@ type User @table(name: "users", singular: "user", key: ["userId"]) {
   type: String! @default(value: "client") # "client" or "admin"
   
   avatarKey: String! @default(value: "default")
+  sessionToken: String
+  sessionExpiry: Timestamp
 }
 
 # -----------------------------

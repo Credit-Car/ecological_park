@@ -19,6 +19,8 @@ query GetUser($userId: String!) @auth(level: USER) {
     createdAt
     type
     avatarKey
+    sessionToken
+    sessionExpiry
   }
 }
 

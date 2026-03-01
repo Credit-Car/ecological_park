@@ -8,9 +8,16 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'dart:async';
 import 'web_auth/auth_button.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 
 // LOG IN PAGE
+import 'package:travel_app/session_manager.dart';
+// import 'package:cloud_firestore/cloud_firestore.dart'; 
+// Use Timestamp from firebase_data_connect to match generated code
+import 'package:firebase_data_connect/firebase_data_connect.dart'; 
+
+
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
 
@@ -31,10 +38,21 @@ class LoginState extends ConsumerState<LoginPage> {
   @override
   void initState() {
     super.initState();
+    _loadRememberMe();
     _googleSignInSubscription = GoogleSignIn.instance.authenticationEvents.listen((event) async {
        if (event is GoogleSignInAuthenticationEventSignIn) {
           await _handleGoogleAuthAccount(event.user);
        }
+    });
+  }
+
+  Future<void> _loadRememberMe() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _isChecked = prefs.getBool('remember_me') ?? false;
+      if (_isChecked) {
+        _emailController.text = prefs.getString('saved_email') ?? '';
+      }
     });
   }
 
@@ -365,6 +383,16 @@ class LoginState extends ConsumerState<LoginPage> {
         email: email,
         password: password,
       );
+
+      // --- Remember Me Logic ---
+      final prefs = await SharedPreferences.getInstance();
+      if (_isChecked) {
+        await prefs.setBool('remember_me', true);
+        await prefs.setString('saved_email', email);
+      } else {
+        await prefs.remove('remember_me');
+        await prefs.remove('saved_email');
+      }
       
       await _onAuthSuccess(userCredential.user);
 
@@ -527,6 +555,35 @@ class LoginState extends ConsumerState<LoginPage> {
         }
         
         if (dbUser != null) {
+            // --- Session Logic ---
+            if (_isChecked) {
+              final sessionManager = SessionManager();
+              final token = sessionManager.generateSessionToken();
+              
+              // Calculate expiry (2 days)
+              final expiryDate = DateTime.now().add(const Duration(days: 2));
+              // Timestamp(nanoseconds, seconds)
+              // (millisecondsSinceEpoch % 1000) * 1000000 gives nanoseconds
+              // millisecondsSinceEpoch ~/ 1000 gives seconds
+              final timestamp = Timestamp(
+                expiryDate.millisecondsSinceEpoch * 1000000,
+                expiryDate.millisecondsSinceEpoch ~/ 1000
+              );
+              
+              // Update DB with token
+              await ExampleConnector.instance.updateUser(
+                userId: user.uid,
+              )
+              .sessionToken(token) 
+              .sessionExpiry(timestamp)
+              .execute();
+              
+              // Set Cookie
+              sessionManager.setSessionCookie(token, persistent: true);
+            } else {
+              SessionManager().clearSession();
+            }
+
             ref.read(currentUserProvider.notifier).state = CurrentUser(
               id: dbUser.userId,
               displayName: dbUser.displayname,

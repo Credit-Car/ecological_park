@@ -2,4 +2,4 @@
 
 # run the below commands
 docker build -t travel_app:latest . 
-docker run -d --name ta -p 6789:80 travel_app:latest
+docker run -d --name ta -p 6789:8080 travel_app:latest

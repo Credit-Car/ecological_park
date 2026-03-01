@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:travel_app/providers/user_session.dart';
+import 'package:travel_app/session_manager.dart';
 import 'package:travel_app/providers/current_user.dart';
 import 'dataconnect_generated/generated.dart';
 import 'package:firebase_data_connect/firebase_data_connect.dart';
@@ -156,7 +156,7 @@ class SignUpPageState extends ConsumerState<SignUpPage> {
             );
           }
       }
-
+      _onAuthSuccess(user);
     } on FirebaseAuthException catch (e) {
       if (mounted) {
          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message ?? 'Signup failed')));
@@ -169,6 +169,78 @@ class SignUpPageState extends ConsumerState<SignUpPage> {
     } finally {
       if (mounted) setState(() => loading = false);
     }
+  }
+
+  Future<void> _onAuthSuccess(User? user) async {
+      if (user == null) return;
+      
+      // Fetch user profile from Data Connect
+      // Check if user exists in DB. If not (first time Google login), create them.
+      try {
+        final response = await ExampleConnector.instance.getUser(userId: user.uid).execute();
+        var dbUser = response.data.user;
+
+        if (dbUser == null) {
+           // First time login with Google -> Create User record
+           await ExampleConnector.instance.createUser(
+             uid: user.uid,
+             displayname: user.displayName ?? 'User',
+             email: user.email ?? '',
+           ).execute();
+           
+           // Fetch again
+           final newResponse = await ExampleConnector.instance.getUser(userId: user.uid).execute();
+           dbUser = newResponse.data.user;
+        }
+        
+        if (dbUser != null) {
+            // --- Session Logic ---
+            if (true) {
+              final sessionManager = SessionManager();
+              final token = sessionManager.generateSessionToken();
+              
+              // Calculate expiry (2 days)
+              final expiryDate = DateTime.now().add(const Duration(days: 2));
+              // Timestamp(nanoseconds, seconds)
+              // (millisecondsSinceEpoch % 1000) * 1000000 gives nanoseconds
+              // millisecondsSinceEpoch ~/ 1000 gives seconds
+              final timestamp = Timestamp(
+                expiryDate.millisecondsSinceEpoch * 1000000,
+                expiryDate.millisecondsSinceEpoch ~/ 1000
+              );
+              
+              // Update DB with token
+              await ExampleConnector.instance.updateUser(
+                userId: user.uid,
+              )
+              .sessionToken(token) 
+              .sessionExpiry(timestamp)
+              .execute();
+              
+              // Set Cookie
+              sessionManager.setSessionCookie(token, persistent: true);
+            }
+
+            ref.read(currentUserProvider.notifier).state = CurrentUser(
+              id: dbUser.userId,
+              displayName: dbUser.displayname,
+              avatarKey: dbUser.avatarKey,
+              email: dbUser.email,
+              type: dbUser.type,
+            );
+        }
+
+        if (mounted) {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (context) => MainNavigation()),
+            (route) => false,
+          );
+        }
+      } catch(e) {
+        print("Error fetching/creating user profile: $e");
+        // Proceed anyway? Or show error?
+      }
   }
 
   @override

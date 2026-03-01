@@ -615,6 +615,14 @@ class UpdateUserVariablesBuilder {
    _email.value = t;
    return this;
   }
+  UpdateUserVariablesBuilder sessionToken(String? t) {
+   _sessionToken.value = t;
+   return this;
+  }
+  UpdateUserVariablesBuilder sessionExpiry(Timestamp? t) {
+   _sessionExpiry.value = t;
+   return this;
+  }
 
   ...
 }
@@ -623,6 +631,8 @@ ExampleConnector.instance.updateUser(
 )
 .displayname(displayname)
 .email(email)
+.sessionToken(sessionToken)
+.sessionExpiry(sessionExpiry)
 .execute();
 ```
 

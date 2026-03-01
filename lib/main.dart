@@ -1,5 +1,6 @@
 // flutter run -d web-server --web-hostname=0.0.0.0 --web-port=8080
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:travel_app/main_navigation.dart';
 import 'package:video_player/video_player.dart';
@@ -20,8 +21,10 @@ import 'package:universal_html/html.dart' as html;
 
 // import 'package:firebase_data_connect/firebase_data_connect.dart';
 
-import 'dataconnect_generated/generated.dart';
-import 'package:flutter_web_plugins/url_strategy.dart';
+import 'package:travel_app/session_manager.dart';
+import 'package:travel_app/dataconnect_generated/generated.dart';
+import 'package:cloud_firestore/cloud_firestore.dart' as cloud_firestore show Timestamp;
+import 'package:flutter_web_plugins/flutter_web_plugins.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -80,52 +83,81 @@ class _LandingPageState extends ConsumerState<LandingPage> {
     // Avoid running auto-login if LandingPage is not the active view
     await Future.delayed(Duration.zero);
     if (!mounted || ModalRoute.of(context)?.isCurrent != true) {
-      return;
-    }
-
-    // Wait for auth state to be ready
-    final user = await FirebaseAuth.instance.authStateChanges().first;
-
-    if (user == null) {
       if (mounted) setState(() => _isLoading = false);
       return;
     }
 
     try {
-      // 4. VERIFY WITH DATA CONNECT
-      print("getting user profile for uid: ${user.uid}");
-      // Execute the GetUser query (updated to accept String userId)
-      final response = await ExampleConnector.instance.getUser(userId: user.uid).execute();
-      
-      // Note: 'user' field in response corresponds to the single user return
-      if (response.data.user != null) {
-        final dbUser = response.data.user!;
-        print("Auto-login success for: ${dbUser.displayname}");
+      // 1. Get Session Token from Cookie
+      final sessionManager = SessionManager();
+      final sessionToken = sessionManager.getSessionToken();
 
-        // Populate Riverpod provider
-        ref.read(currentUserProvider.notifier).state = CurrentUser(
-          id: dbUser.userId,
-          displayName: dbUser.displayname,
-          avatarKey: dbUser.avatarKey, // Assuming updated schema
-          email: dbUser.email,
-          type: dbUser.type,
-        );
-
-        if (mounted) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => MainNavigation()),
-          );
-          return; 
+      // IF no session token (cookie expired or missing), we cannot auto-login.
+      // Force logout to ensure UI consistency if Firebase thinks we are still logged in.
+      if (sessionToken == null) {
+        if (FirebaseAuth.instance.currentUser != null) {
+          await FirebaseAuth.instance.signOut();
         }
-      } else {
-        print("User authenticated but no profile found in DB.");
+        if (mounted) setState(() => _isLoading = false);
+        return;
+      }
+      // else {
+      //  debugPrint(sessionToken);
+      // }
+
+      // 2. Get Firebase User (wait for auth to settle)
+      User? firebaseUser = FirebaseAuth.instance.currentUser;
+      firebaseUser ??= await FirebaseAuth.instance.authStateChanges().first;
+
+      // If still no firebase user, we can't proceed
+      if (firebaseUser == null) {
+        if (mounted) setState(() => _isLoading = false);
+
+        debugPrint('no firebase user');
+        return;
+      }
+      else{
+       debugPrint('firebase user found: ${firebaseUser.uid}');
       }
 
+      // 3. Validate against Database
+      // We have both a cookie and a Firebase user. Now check if the server agrees.
+      final response = await ExampleConnector.instance.getUser(userId: firebaseUser.uid).execute();
+      final dbUser = response.data.user;
+
+      if (dbUser != null) {
+        // Check if server token matches client cookie
+        // && check if server token is not expired (logic derived from previous dead code)
+        final expiry = dbUser.sessionExpiry;
+        final now = cloud_firestore.Timestamp.now();
+        bool isTokenExpired = expiry != null && now.compareTo(cloud_firestore.Timestamp(expiry.seconds, 0)) > 0;
+
+        if (dbUser.sessionToken == sessionToken && !isTokenExpired) {
+          // SUCCESS: Auto-login
+          ref.read(currentUserProvider.notifier).state = CurrentUser(
+            id: dbUser.userId,
+            displayName: dbUser.displayname,
+            avatarKey: dbUser.avatarKey,
+            email: dbUser.email,
+            type: dbUser.type,
+          );
+
+          if (mounted) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => MainNavigation()),
+            );
+            return; // Important: return to avoid hitting finally block setState
+          }
+        } else {
+          // Token mismatch or expired
+         debugPrint("Session invalid (mismatch or expired). Logging out.");
+          await FirebaseAuth.instance.signOut();
+        }
+      }
     } catch (e) {
-      print("Session check failed: $e");
+      debugPrint("Session check failed: $e");
     } finally {
-      // Stop loading so user can click "Get Started" manually
       if (mounted) setState(() => _isLoading = false);
     }
   }
@@ -143,8 +175,8 @@ class _LandingPageState extends ConsumerState<LandingPage> {
             child: Padding(
               padding: const EdgeInsets.all(40.0),
               child: Column(
-                mainAxisSize: MainAxisSize.min,
-children: [
+                mainAxisSize: MainAxisSize.min, 
+                children: [
                   Text(
                     'Welcome Back!',
                     style: TextStyle(

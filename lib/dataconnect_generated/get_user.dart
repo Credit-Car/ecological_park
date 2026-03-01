@@ -25,6 +25,8 @@ class GetUserUser {
   final Timestamp createdAt;
   final String type;
   final String avatarKey;
+  final String? sessionToken;
+  final Timestamp? sessionExpiry;
   GetUserUser.fromJson(dynamic json):
   
   userId = nativeFromJson<String>(json['userId']),
@@ -32,7 +34,9 @@ class GetUserUser {
   email = nativeFromJson<String>(json['email']),
   createdAt = Timestamp.fromJson(json['createdAt']),
   type = nativeFromJson<String>(json['type']),
-  avatarKey = nativeFromJson<String>(json['avatarKey']);
+  avatarKey = nativeFromJson<String>(json['avatarKey']),
+  sessionToken = json['sessionToken'] == null ? null : nativeFromJson<String>(json['sessionToken']),
+  sessionExpiry = json['sessionExpiry'] == null ? null : Timestamp.fromJson(json['sessionExpiry']);
   @override
   bool operator ==(Object other) {
     if(identical(this, other)) {
@@ -48,11 +52,13 @@ class GetUserUser {
     email == otherTyped.email && 
     createdAt == otherTyped.createdAt && 
     type == otherTyped.type && 
-    avatarKey == otherTyped.avatarKey;
+    avatarKey == otherTyped.avatarKey && 
+    sessionToken == otherTyped.sessionToken && 
+    sessionExpiry == otherTyped.sessionExpiry;
     
   }
   @override
-  int get hashCode => Object.hashAll([userId.hashCode, displayname.hashCode, email.hashCode, createdAt.hashCode, type.hashCode, avatarKey.hashCode]);
+  int get hashCode => Object.hashAll([userId.hashCode, displayname.hashCode, email.hashCode, createdAt.hashCode, type.hashCode, avatarKey.hashCode, sessionToken.hashCode, sessionExpiry.hashCode]);
   
 
   Map<String, dynamic> toJson() {
@@ -63,6 +69,12 @@ class GetUserUser {
     json['createdAt'] = createdAt.toJson();
     json['type'] = nativeToJson<String>(type);
     json['avatarKey'] = nativeToJson<String>(avatarKey);
+    if (sessionToken != null) {
+      json['sessionToken'] = nativeToJson<String?>(sessionToken);
+    }
+    if (sessionExpiry != null) {
+      json['sessionExpiry'] = sessionExpiry!.toJson();
+    }
     return json;
   }
 
@@ -73,6 +85,8 @@ class GetUserUser {
     required this.createdAt,
     required this.type,
     required this.avatarKey,
+    this.sessionToken,
+    this.sessionExpiry,
   });
 }
 

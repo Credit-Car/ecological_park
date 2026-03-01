@@ -12,9 +12,9 @@ mutation CreateUser($uid: String!, $displayname: String!, $email: String!)
   user_insert(data: {userId: $uid, displayname: $displayname, email: $email, type: "client"})
 }
 
-mutation UpdateUser($userId: String!, $displayname: String, $email: String)
+mutation UpdateUser($userId: String!, $displayname: String, $email: String, $sessionToken: String, $sessionExpiry: Timestamp)
   @auth(level: USER) {
-  user_update(key: {userId: $userId}, data: {displayname: $displayname, email: $email})
+  user_update(key: {userId: $userId}, data: {displayname: $displayname, email: $email, sessionToken: $sessionToken, sessionExpiry: $sessionExpiry})
 }
 
 mutation DeleteUser($userId: String!)

@@ -559,6 +559,30 @@ input User_Data {
   """
   email_expr: String_Expr
   """
+  ✨ Generated from Field `User`.`sessionExpiry` of type `Timestamp`
+  """
+  sessionExpiry: Timestamp
+  """
+  ✨ `_expr` server value variant of `sessionExpiry` (✨ Generated from Field `User`.`sessionExpiry` of type `Timestamp`)
+  """
+  sessionExpiry_expr: Timestamp_Expr
+  """
+  ✨ `_time` server value variant of `sessionExpiry` (✨ Generated from Field `User`.`sessionExpiry` of type `Timestamp`)
+  """
+  sessionExpiry_time: Timestamp_Relative
+  """
+  ✨ `_update` server value variant of `sessionExpiry` (✨ Generated from Field `User`.`sessionExpiry` of type `Timestamp`)
+  """
+  sessionExpiry_update: [Timestamp_Update!]
+  """
+  ✨ Generated from Field `User`.`sessionToken` of type `String`
+  """
+  sessionToken: String
+  """
+  ✨ `_expr` server value variant of `sessionToken` (✨ Generated from Field `User`.`sessionToken` of type `String`)
+  """
+  sessionToken_expr: String_Expr
+  """
   ✨ Generated from Field `User`.`type` of type `String!`
   """
   type: String
@@ -603,6 +627,14 @@ input User_Filter {
   ✨ Generated from Field `User`.`email` of type `String!`
   """
   email: String_Filter
+  """
+  ✨ Generated from Field `User`.`sessionExpiry` of type `Timestamp`
+  """
+  sessionExpiry: Timestamp_Filter
+  """
+  ✨ Generated from Field `User`.`sessionToken` of type `String`
+  """
+  sessionToken: String_Filter
   """
   ✨ Generated from Field `User`.`type` of type `String!`
   """
@@ -662,6 +694,14 @@ input User_Having {
   """
   email_count: Int_Filter
   """
+  ✨ Generated from Field `User`.`sessionExpiry_count` of type `Int!`
+  """
+  sessionExpiry_count: Int_Filter
+  """
+  ✨ Generated from Field `User`.`sessionToken_count` of type `Int!`
+  """
+  sessionToken_count: Int_Filter
+  """
   ✨ Generated from Field `User`.`type_count` of type `Int!`
   """
   type_count: Int_Filter
@@ -674,9 +714,17 @@ input User_Having {
   """
   createdAt_min: Timestamp_Filter
   """
+  ✨ Generated from Field `User`.`sessionExpiry_min` of type `Timestamp`
+  """
+  sessionExpiry_min: Timestamp_Filter
+  """
   ✨ Generated from Field `User`.`createdAt_max` of type `Timestamp`
   """
   createdAt_max: Timestamp_Filter
+  """
+  ✨ Generated from Field `User`.`sessionExpiry_max` of type `Timestamp`
+  """
+  sessionExpiry_max: Timestamp_Filter
 }
 """
 ✨ Generated key input type for table 'User'. It represents the primary key fields used to uniquely identify a row in the table.
@@ -729,6 +777,14 @@ input User_Order {
   """
   email: OrderDirection
   """
+  ✨ Generated from Field `User`.`sessionExpiry` of type `Timestamp`
+  """
+  sessionExpiry: OrderDirection
+  """
+  ✨ Generated from Field `User`.`sessionToken` of type `String`
+  """
+  sessionToken: OrderDirection
+  """
   ✨ Generated from Field `User`.`type` of type `String!`
   """
   type: OrderDirection
@@ -753,6 +809,14 @@ input User_Order {
   """
   email_count: OrderDirection
   """
+  ✨ Generated from Field `User`.`sessionExpiry_count` of type `Int!`
+  """
+  sessionExpiry_count: OrderDirection
+  """
+  ✨ Generated from Field `User`.`sessionToken_count` of type `Int!`
+  """
+  sessionToken_count: OrderDirection
+  """
   ✨ Generated from Field `User`.`type_count` of type `Int!`
   """
   type_count: OrderDirection
@@ -765,7 +829,15 @@ input User_Order {
   """
   createdAt_min: OrderDirection
   """
+  ✨ Generated from Field `User`.`sessionExpiry_min` of type `Timestamp`
+  """
+  sessionExpiry_min: OrderDirection
+  """
   ✨ Generated from Field `User`.`createdAt_max` of type `Timestamp`
   """
   createdAt_max: OrderDirection
+  """
+  ✨ Generated from Field `User`.`sessionExpiry_max` of type `Timestamp`
+  """
+  sessionExpiry_max: OrderDirection
 }
