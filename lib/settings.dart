@@ -9,6 +9,9 @@ import 'package:focused_menu/focused_menu.dart';
 import 'package:focused_menu/modals.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+// Tracks the last time a password reset email was sent
+final passwordResetTimeProvider = StateProvider<DateTime?>((ref) => null);
+
 void main() {
   runApp(const MyApp());
 }
@@ -215,6 +218,9 @@ class ProfileMenuScreen extends ConsumerWidget {
                       );
                     },
                   ),
+
+                  _buildDivider(),
+                  
                   _buildMenuItem(
                     icon: Icons.door_back_door_outlined,
                     text: "Logout",
@@ -661,13 +667,39 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
               children: [
                 const Text("Forgot Password? ",
                     style: TextStyle(color: Colors.grey)),
+
                 GestureDetector(
                   onTap: () async {
+
                     final email = FirebaseAuth.instance.currentUser?.email;
+                    final lastResetTime = ref.read(passwordResetTimeProvider);
+                    final now = DateTime.now();
+
+                    // Check if 5 minutes (300 seconds) have passed
+                    if (lastResetTime != null) {
+                      final difference = now.difference(lastResetTime);
+                      if (difference.inMinutes < 5) {
+                        final remaining = 5 - difference.inMinutes;
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Please wait $remaining minute(s) before requesting another email.'),
+                              backgroundColor: Colors.orange,
+                            ),
+                          );
+                        }
+                        return;
+                      }
+                    }
+
                     if (email != null && email.isNotEmpty) {
                       try {
                         await FirebaseAuth.instance
                             .sendPasswordResetEmail(email: email);
+                        
+                        // Update the timestamp on success
+                        ref.read(passwordResetTimeProvider.notifier).state = now;
+
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
