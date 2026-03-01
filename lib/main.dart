@@ -1,12 +1,12 @@
 // flutter run -d web-server --web-hostname=0.0.0.0 --web-port=8080
 
-import 'package:cloud_firestore/cloud_firestore.dart';
+//import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:travel_app/main_navigation.dart';
 import 'package:video_player/video_player.dart';
 import 'login_page.dart';
 import 'admin_pages/admin_login_page.dart';
-import 'admin_pages/admin_dashboard.dart';
+// import 'admin_pages/admin_dashboard.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:travel_app/providers/current_user.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -15,7 +15,7 @@ import 'firebase_options.dart';
 // import 'chatbot.dart';
 // import 'main_navigation.dart';
 // import 'settings.dart';
-import 'package:universal_html/html.dart' as html;
+// import 'package:universal_html/html.dart' as html;
 // import 'package:uuid/uuid.dart'; // for token generation
 // import 'package:firebase_data_connect/firebase_data_connect.dart';
 
@@ -53,7 +53,7 @@ class WelcomePage extends StatelessWidget {
       ),
       initialRoute: '/',
       routes: {
-        '/': (context) => const LandingPage(),
+        '/': (context) => const MainNavigation(),
         // '/': (context) => const AdminLoginPage(),
         '/admin': (context) => const AdminLoginPage(),
       },

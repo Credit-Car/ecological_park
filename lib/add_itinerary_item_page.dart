@@ -1,74 +1,74 @@
-// lib/pages/add_itinerary_item_page.dart
 import 'package:flutter/material.dart';
-import '../models/route.dart';
-import '../models/itinerary_item.dart';
+import '../models/trip.dart';
+import '../models/places.dart';
 
-class AddItineraryItemPage extends StatefulWidget {
-  final Route trip;
-  const AddItineraryItemPage({super.key, required this.trip});
+class AddTripStopPage extends StatefulWidget {
+  final Trip trip;
+  final List<Places> availablePlaces; // Pass your list of places here
+
+  const AddTripStopPage({
+    super.key, 
+    required this.trip, 
+    required this.availablePlaces
+  });
 
   @override
-  State<AddItineraryItemPage> createState() => _AddItineraryItemPageState();
+  State<AddTripStopPage> createState() => _AddTripStopPageState();
 }
 
-class _AddItineraryItemPageState extends State<AddItineraryItemPage> {
+class _AddTripStopPageState extends State<AddTripStopPage> {
   final _formKey = GlobalKey<FormState>();
-  final _titleController = TextEditingController();
-  final _locationController = TextEditingController();
   final _notesController = TextEditingController();
-  final _urlController = TextEditingController();
-
-  ItineraryItemType _selectedType = ItineraryItemType.activity;
+  
+  Places? _selectedPlace;
   DateTime? _selectedDateTime;
 
+  // Date/Time Picker
   void _pickDateTime() async {
-    final date = await showDatePicker(
+    final DateTime? pickedDate = await showDatePicker(
       context: context,
       initialDate: DateTime.now(),
-      firstDate: DateTime(2020),
-      lastDate: DateTime(2100),
+      firstDate: DateTime.now(),
+      lastDate: DateTime(2030),
+      builder: (context, child) => Theme(
+        data: Theme.of(context).copyWith(
+          colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
+        ),
+        child: child!,
+      ),
     );
 
-    if (date == null) return;
-
-    final time = await showTimePicker(
-      // ignore: use_build_context_synchronously
-      context: context,
-      initialTime: const TimeOfDay(hour: 9, minute: 0),
-    );
-
-    if (time == null) return;
-
-    setState(() {
-      _selectedDateTime =
-          DateTime(date.year, date.month, date.day, time.hour, time.minute);
-    });
-  }
-
-  void _saveItem() {
-    if (_formKey.currentState!.validate() && _selectedDateTime != null) {
-      final newItem = ItineraryItem(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        type: _selectedType,
-        title: _titleController.text.trim(),
-        time: _selectedDateTime!,
-        location: _locationController.text.trim().isEmpty
-            ? null
-            : _locationController.text.trim(),
-        notes:
-            _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
-        actionUrl:
-            _urlController.text.trim().isEmpty ? null : _urlController.text.trim(),
+    if (pickedDate != null) {
+      final TimeOfDay? pickedTime = await showTimePicker(
+        context: context,
+        initialTime: TimeOfDay.now(),
       );
 
-      // Normally you’d save this to a database or pass it back.
-      // For now, we’ll just print it.
-      print('✅ New Itinerary Item Added: ${newItem.title}');
+      if (pickedTime != null) {
+        setState(() {
+          _selectedDateTime = DateTime(
+            pickedDate.year, pickedDate.month, pickedDate.day,
+            pickedTime.hour, pickedTime.minute,
+          );
+        });
+      }
+    }
+  }
 
-      Navigator.pop(context, newItem);
-    } else if (_selectedDateTime == null) {
+  void _saveStop() {
+    if (_formKey.currentState!.validate() && _selectedPlace != null && _selectedDateTime != null) {
+      final newStop = TripStop(
+        place: _selectedPlace!,
+        scheduledTime: _selectedDateTime!,
+        customNotes: _notesController.text.trim(),
+      );
+
+      widget.trip.stops.add(newStop);
+      
+      Navigator.pop(context, true);
+    } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a date and time.')),
+        const SnackBar(content: Text('Please select a place and a time.')),
       );
     }
   }
@@ -76,115 +76,109 @@ class _AddItineraryItemPageState extends State<AddItineraryItemPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: const Text('Add Itinerary Item'),
-        centerTitle: false,
+        title: const Text('Add Stop', style: TextStyle(fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        centerTitle: true,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20.0),
+        padding: const EdgeInsets.all(24.0),
         child: Form(
           key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Item Type Dropdown
-              DropdownButtonFormField<ItineraryItemType>(
-                decoration: const InputDecoration(
-                  labelText: 'Item Type',
-                  border: OutlineInputBorder(),
+              const Text("Where are you going?", 
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 12),
+              
+              // Place Picker Card
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10)],
                 ),
-                initialValue: _selectedType,
-                items: ItineraryItemType.values.map((type) {
-                  return DropdownMenuItem(
-                    value: type,
-                    child: Text(type.name.toUpperCase()),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  setState(() {
-                    _selectedType = value!;
-                  });
-                },
-              ),
-              const SizedBox(height: 20),
-
-              // Title
-              TextFormField(
-                controller: _titleController,
-                decoration: const InputDecoration(
-                  labelText: 'Title',
-                  border: OutlineInputBorder(),
+                child: DropdownButtonFormField<Places>(
+                  decoration: const InputDecoration(border: InputBorder.none),
+                  hint: const Text("Select a Place"),
+                  value: _selectedPlace,
+                  items: widget.availablePlaces.map((place) {
+                    return DropdownMenuItem(
+                      value: place,
+                      child: Text(place.name),
+                    );
+                  }).toList(),
+                  onChanged: (val) => setState(() => _selectedPlace = val),
                 ),
-                validator: (value) =>
-                    value == null || value.isEmpty ? 'Enter a title' : null,
               ),
-              const SizedBox(height: 20),
+              
+              const SizedBox(height: 30),
+              
+              const Text("When?", 
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 12),
 
-              // Date & Time
               InkWell(
                 onTap: _pickDateTime,
-                child: InputDecorator(
-                  decoration: const InputDecoration(
-                    labelText: 'Date & Time',
-                    border: OutlineInputBorder(),
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: _selectedDateTime == null ? Colors.transparent : const Color.fromARGB(255, 92, 184, 174)),
                   ),
-                  child: Text(
-                    _selectedDateTime == null
-                        ? 'Select date and time'
-                        : '${_selectedDateTime!.toLocal()}'.split('.')[0],
-                    style: TextStyle(
-                      color: _selectedDateTime == null
-                          ? Colors.grey
-                          : Colors.black,
-                    ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.calendar_today, color: const Color.fromARGB(255, 92, 184, 174)),
+                      const SizedBox(width: 16),
+                      Text(
+                        _selectedDateTime == null 
+                          ? "Pick Date & Time" 
+                          : "${_selectedDateTime!.day}/${_selectedDateTime!.month} @ ${TimeOfDay.fromDateTime(_selectedDateTime!).format(context)}",
+                        style: const TextStyle(fontSize: 16),
+                      ),
+                    ],
                   ),
                 ),
               ),
-              const SizedBox(height: 20),
 
-              // Location
-              TextFormField(
-                controller: _locationController,
-                decoration: const InputDecoration(
-                  labelText: 'Location (optional)',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              // Notes
-              TextFormField(
-                controller: _notesController,
-                decoration: const InputDecoration(
-                  labelText: 'Notes (optional)',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              // Action URL
-              TextFormField(
-                controller: _urlController,
-                decoration: const InputDecoration(
-                  labelText: 'Action URL (optional)',
-                  border: OutlineInputBorder(),
-                ),
-              ),
               const SizedBox(height: 30),
 
-              // Save Button
-              Center(
-                child: ElevatedButton.icon(
-                  onPressed: _saveItem,
-                  icon: const Icon(Icons.check),
-                  label: const Text('Save Item'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.teal.shade300,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 40, vertical: 14),
-                    textStyle: const TextStyle(fontSize: 16),
+              const Text("Additional Notes", 
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 12),
+
+              TextFormField(
+                controller: _notesController,
+                maxLines: 3,
+                decoration: InputDecoration(
+                  hintText: "E.g. Don't forget the booking reference...",
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide.none,
                   ),
+                ),
+              ),
+
+              const SizedBox(height: 40),
+              SizedBox(
+                width: double.infinity,
+                height: 56,
+                child: ElevatedButton(
+                  onPressed: _saveStop,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.teal,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    elevation: 4,
+                  ),
+                  child: const Text("Add to Route", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 ),
               ),
             ],

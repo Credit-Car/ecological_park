@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:travel_app/add_itinerary_item_page.dart';
 import 'dashboard.dart';
 import 'trips_page.dart';
 import 'chatbot.dart';
@@ -44,7 +45,7 @@ class _MainNavigationState extends ConsumerState<MainNavigation> {
   late final List<Widget> _pages = [
     const Dashboard(),
     const TripsPage(),
-    AddItineraryStopPage(),
+    CampusMapViewerPage(),
     const ChatbotApp(),
     ProfileMenuScreen(),
   ];
@@ -57,9 +58,7 @@ class _MainNavigationState extends ConsumerState<MainNavigation> {
       
       _selectedIndex = index;
 
-      if (_navigationHistory.length > 1 && _navigationHistory[_navigationHistory.length - 2] == index) {
-        _navigationHistory.removeLast();
-      } else {
+      if (_navigationHistory.isEmpty || _navigationHistory.last != index) {
         _navigationHistory.add(index);
       }
     });

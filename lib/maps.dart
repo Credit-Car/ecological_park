@@ -2,49 +2,40 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:pointer_interceptor/pointer_interceptor.dart';
 import 'models/places.dart';
-void main() {
-  runApp(const MaterialApp(
-    debugShowCheckedModeBanner: false,
-    home: AddItineraryStopPage(),
-  ));
-}
-class AddItineraryStopPage extends StatefulWidget {
-  const AddItineraryStopPage({super.key});
+import 'mockdata.dart';
+
+class CampusMapViewerPage extends StatefulWidget {
+  const CampusMapViewerPage({super.key});
+
   @override
-  State<AddItineraryStopPage> createState() => _AddItineraryStopPageState();
+  State<CampusMapViewerPage> createState() => _CampusMapViewerPageState();
 }
 
-class _AddItineraryStopPageState extends State<AddItineraryStopPage> {
+class _CampusMapViewerPageState extends State<CampusMapViewerPage> {
   final TextEditingController _searchController = TextEditingController();
   GoogleMapController? _mapController;
   Places? _selectedPlace;
   List<Places> _searchResults = [];
   String _selectedCategory = "All";
 
+  final List<Places> _allPlaces = MockData.availablePlaces;
+
   final LatLngBounds _ndhuBounds = LatLngBounds(
     southwest: const LatLng(23.8850, 121.5280),
     northeast: const LatLng(23.9050, 121.5550),
   );
 
-  final List<Places> _Placess = const [
-    Places(name: "NDHU Library", category: "Academic", detail: "Main university library", lat: 23.896943, lng: 121.5395882),
-    Places(name: "Administration Building", category: "Administrative", detail: "University admin office", lat: 23.8971, lng: 121.5412),
-    Places(name: "Gymnasium", category: "Sports", detail: "Sports and recreation center", lat: 23.8930, lng: 121.5360),
-    Places(name: "NDHU Stadium", category: "Sports", detail: "Athletic Field and Track Field", lat: 23.9016242, lng: 121.5375676),
-    Places(name: "Dorm V", category: "Dorm", detail: "Student housing area", lat: 23.8982, lng: 121.5375),
-  ];
-
   void _performSearch(String query) {
-    if (query.isEmpty) {
-      setState(() => _searchResults = []);
-      return;
-    }
     setState(() {
-      _searchResults = _Placess.where((place) {
-        bool matchesQuery = place.name.toLowerCase().contains(query.toLowerCase());
-        bool matchesCategory = _selectedCategory == "All" || place.category == _selectedCategory;
-        return matchesQuery && matchesCategory;
-      }).toList();
+      if (query.isEmpty && _selectedCategory == "All") {
+        _searchResults = [];
+      } else {
+        _searchResults = _allPlaces.where((place) {
+          bool matchesQuery = place.name.toLowerCase().contains(query.toLowerCase());
+          bool matchesCategory = _selectedCategory == "All" || place.category == _selectedCategory;
+          return matchesQuery && matchesCategory;
+        }).toList();
+      }
     });
   }
 
@@ -52,9 +43,12 @@ class _AddItineraryStopPageState extends State<AddItineraryStopPage> {
     setState(() {
       _selectedPlace = place;
       _searchResults = [];
-      _searchController.text = place.name;
+      _searchController.clear();
+      FocusScope.of(context).unfocus();
     });
-    _mapController?.animateCamera(CameraUpdate.newLatLngZoom(LatLng(place.lat, place.lng), 17.5));
+    _mapController?.animateCamera(
+      CameraUpdate.newLatLngZoom(LatLng(place.lat, place.lng), 17.5),
+    );
   }
 
   @override
@@ -65,7 +59,7 @@ class _AddItineraryStopPageState extends State<AddItineraryStopPage> {
       backgroundColor: Colors.white,
       body: Stack(
         children: [
-
+          // Google Map
           GoogleMap(
             initialCameraPosition: const CameraPosition(target: LatLng(23.8967, 121.5398), zoom: 16),
             cameraTargetBounds: CameraTargetBounds(_ndhuBounds),
@@ -73,106 +67,29 @@ class _AddItineraryStopPageState extends State<AddItineraryStopPage> {
             onMapCreated: (controller) => _mapController = controller,
             myLocationButtonEnabled: false,
             zoomControlsEnabled: false,
-            markers: _selectedPlace == null ? {} : {
-              Marker(
-                markerId: const MarkerId("selected"),
-                position: LatLng(_selectedPlace!.lat, _selectedPlace!.lng),
-                icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueViolet),
-              )
-            },
+            markers: _buildMarkers(),
+            onTap: (_) => setState(() => _selectedPlace = null),
           ),
           Positioned(
-            top: 50, left: 20, right: 20,
+            top: 20, left: 20, right: 20,
             child: PointerInterceptor(
               child: Column(
                 children: [
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(15),
-                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 5))],
-                    ),
-                    child: TextField(
-                      controller: _searchController,
-                      onChanged: _performSearch,
-                      decoration: const InputDecoration(
-                        hintText: "Where to in NDHU?",
-                        prefixIcon: Icon(Icons.search, color: primaryColor),
-                        border: InputBorder.none,
-                        contentPadding: EdgeInsets.symmetric(vertical: 15),
-                      ),
-                    ),
-                  ),
+                  _buildSearchBar(primaryColor),
                   const SizedBox(height: 12),
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: ["All", "Academic", "Dorm", "Sports", "Administrative"].map((cat) => _buildFilterChip(cat)).toList(),
-                    ),
-                  ),
-                  // Search Results Dropdown
-                  if (_searchResults.isNotEmpty)
-                    Container(
-                      margin: const EdgeInsets.only(top: 5),
-                      constraints: const BoxConstraints(maxHeight: 250),
-                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(15)),
-                      child: ListView.builder(
-                        shrinkWrap: true,
-                        itemCount: _searchResults.length,
-                        itemBuilder: (context, i) => ListTile(
-                          title: Text(_searchResults[i].name),
-                          subtitle: Text(_searchResults[i].category),
-                          onTap: () => _onPlaceTap(_searchResults[i]),
-                        ),
-                      ),
-                    ),
+                  _buildFilterChips(primaryColor),
+                  if (_searchResults.isNotEmpty) _buildSearchResultsDropdown(),
                 ],
               ),
             ),
           ),
 
-          // Details Card
+          // Info Card
           if (_selectedPlace != null)
             Positioned(
               bottom: 30, left: 20, right: 20,
               child: PointerInterceptor(
-                child: Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(25),
-                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 20)],
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(_selectedPlace!.name, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                              Text(_selectedPlace!.detail, style: const TextStyle(color: Colors.grey)),
-                            ],
-                          ),
-                          const Icon(Icons.directions, color: primaryColor, size: 30),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: primaryColor,
-                          minimumSize: const Size(double.infinity, 55),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                        ),
-                        onPressed: () => print("Location Confirmed"),
-                        child: const Text("Add to Itinerary", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-                      ),
-                    ],
-                  ),
-                ),
+                child: _buildInfoCard(primaryColor),
               ),
             ),
         ],
@@ -180,19 +97,149 @@ class _AddItineraryStopPageState extends State<AddItineraryStopPage> {
     );
   }
 
-  Widget _buildFilterChip(String label) {
-    bool isSelected = _selectedCategory == label;
-    return Padding(
-      padding: const EdgeInsets.only(right: 8),
-      child: ChoiceChip(
-        label: Text(label),
-        selected: isSelected,
-        selectedColor: const Color(0xFF5D5FEF).withOpacity(0.2),
-        labelStyle: TextStyle(color: isSelected ? const Color(0xFF5D5FEF) : Colors.black87, fontWeight: FontWeight.bold),
-        onSelected: (val) => setState(() {
-          _selectedCategory = label;
-          _performSearch(_searchController.text);
-        }),
+  Set<Marker> _buildMarkers() {
+    return _allPlaces.map((place) {
+      return Marker(
+        markerId: MarkerId(place.name),
+        position: LatLng(place.lat, place.lng),
+        icon: BitmapDescriptor.defaultMarkerWithHue(
+          _selectedPlace?.name == place.name 
+              ? BitmapDescriptor.hueViolet 
+              : BitmapDescriptor.hueAzure,
+        ),
+        onTap: () => _onPlaceTap(place),
+      );
+    }).toSet();
+  }
+
+  Widget _buildSearchBar(Color primaryColor) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(15),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 5))],
+      ),
+      child: TextField(
+        controller: _searchController,
+        onChanged: _performSearch,
+        decoration: const InputDecoration(
+          hintText: "Explore NDHU Buildings...",
+          prefixIcon: Icon(Icons.search, color: Color(0xFF5D5FEF)),
+          border: InputBorder.none,
+          contentPadding: EdgeInsets.symmetric(vertical: 15),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFilterChips(Color primaryColor) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: ["All", "Academic", "Dorm", "Sports", "Administrative"].map((cat) {
+          bool isSelected = _selectedCategory == cat;
+          return Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: ChoiceChip(
+              label: Text(cat),
+              selected: isSelected,
+              selectedColor: primaryColor.withOpacity(0.2),
+              onSelected: (val) {
+                setState(() {
+                  _selectedCategory = cat;
+                  _performSearch(_searchController.text);
+                });
+              },
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildSearchResultsDropdown() {
+    return Container(
+      margin: const EdgeInsets.only(top: 5),
+      constraints: const BoxConstraints(maxHeight: 250),
+      decoration: BoxDecoration(
+        color: Colors.white, 
+        borderRadius: BorderRadius.circular(15),
+        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10)],
+      ),
+      child: ListView.builder(
+        shrinkWrap: true,
+        padding: EdgeInsets.zero,
+        itemCount: _searchResults.length,
+        itemBuilder: (context, i) => ListTile(
+          title: Text(_searchResults[i].name),
+          subtitle: Text(_searchResults[i].category),
+          onTap: () => _onPlaceTap(_searchResults[i]),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoCard(Color primaryColor) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(25),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.12), blurRadius: 20)],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(15),
+                child: Image.asset(
+                  _selectedPlace!.imageUrl,
+                  width: 85, height: 85, fit: BoxFit.cover,
+                  errorBuilder: (c, e, s) => Container(width: 85, height: 85, color: Colors.grey[100], child: const Icon(Icons.business)),
+                ),
+              ),
+              const SizedBox(width: 15),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(_selectedPlace!.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 4),
+                    Text(_selectedPlace!.category, style: TextStyle(color: primaryColor, fontWeight: FontWeight.w600, fontSize: 13)),
+                    const SizedBox(height: 4),
+                    Text(_selectedPlace!.detail, style: const TextStyle(color: Colors.grey, fontSize: 13)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () {}, // For viewing purposes
+                  icon: const Icon(Icons.info_outline, size: 18),
+                  label: const Text("Building Wiki"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.grey[100],
+                    foregroundColor: Colors.black87,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              IconButton(
+                icon: const Icon(Icons.close_rounded, color: Colors.grey),
+                onPressed: () => setState(() => _selectedPlace = null),
+              )
+            ],
+          )
+        ],
       ),
     );
   }

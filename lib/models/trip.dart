@@ -1,20 +1,31 @@
-// lib/models/trip.dart
+import 'places.dart';
+
 class Trip {
   final String id;
-  final String destination;
+  final String name;
+  final String type;
   final DateTime startDate;
   final DateTime endDate;
-  final int durationDays;
-  final String type; // e.g., Business, Vacation
-  final String imageUrl; // For the Route card background
+  final List<TripStop> stops;
 
   Trip({
     required this.id,
-    required this.destination,
+    required this.name,
+    required this.type,
     required this.startDate,
     required this.endDate,
-    required this.durationDays,
-    required this.type,
-    required this.imageUrl,
+    required this.stops,
+  });
+}
+
+class TripStop {
+  final Places place;
+  final DateTime scheduledTime;
+  final String? customNotes;
+
+  TripStop({
+    required this.place,
+    required this.scheduledTime,
+    this.customNotes,
   });
 }
