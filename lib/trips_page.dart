@@ -1,40 +1,54 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart'; // Assuming you use Riverpod for Auth
 import 'models/trip.dart';
 import 'itinerary_details_page.dart';
 import 'mockdata.dart';
+import 'providers/current_user.dart'; // Import your user provider
 
-class TripsPage extends StatefulWidget {
+class TripsPage extends ConsumerStatefulWidget {
   const TripsPage({super.key});
 
   @override
-  State<TripsPage> createState() => _TripsPageState();
+  ConsumerState<TripsPage> createState() => _TripsPageState();
 }
 
-class _TripsPageState extends State<TripsPage> {
+class _TripsPageState extends ConsumerState<TripsPage> {
   int _activeSegment = 0;
   final PageController _pageController = PageController();
 
-  final List<Trip> _allTrips = [
-    Trip(
-      id: 'u1',
-      name: 'NDHU Library Visit',
-      startDate: DateTime(2026, 3, 10),
-      endDate: DateTime(2026, 3, 15),
-      type: 'Study',
-      stops: MockData.getAllTrips()[0].stops,
-    ),
-    Trip(
-      id: 'p1',
-      name: 'Solar Farm Expo',
-      startDate: DateTime(2025, 12, 20),
-      endDate: DateTime(2025, 12, 21),
-      type: 'Leisure',
-      stops: MockData.getAllTrips()[1].stops,
-    ),
-  ];
+  // Updated list with userId and proper stop references
+  late List<Trip> _allTrips;
 
-  // Create Trip Modal Sheet
+  @override
+  void initState() {
+    super.initState();
+    // In a real app, this would be a Stream or Future from Firebase
+    final currentUser = ref.read(currentUserProvider);
+    final String uid = currentUser?.id ?? 'guest_user';
+
+    _allTrips = [
+      Trip(
+        id: 'u1',
+        userId: uid, // Added userId
+        name: 'NDHU Library Visit',
+        startDate: DateTime(2026, 3, 10),
+        endDate: DateTime(2026, 3, 15),
+        type: 'Study',
+        stops: MockData.getAllTrips()[0].stops,
+      ),
+      Trip(
+        id: 'p1',
+        userId: uid, // Added userId
+        name: 'Solar Farm Expo',
+        startDate: DateTime(2025, 12, 20),
+        endDate: DateTime(2025, 12, 21),
+        type: 'Leisure',
+        stops: MockData.getAllTrips()[1].stops,
+      ),
+    ];
+  }
+
   void _showCreateTripSheet() {
     final nameController = TextEditingController();
     String selectedType = 'Leisure';
@@ -61,7 +75,6 @@ class _TripsPageState extends State<TripsPage> {
                 style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: -0.5)),
               const SizedBox(height: 24),
               
-              // Trip Name Input
               TextField(
                 controller: nameController,
                 decoration: InputDecoration(
@@ -74,17 +87,12 @@ class _TripsPageState extends State<TripsPage> {
               ),
               const SizedBox(height: 16),
 
-              // Date Selection
               InkWell(
                 onTap: () async {
                   final picked = await showDateRangePicker(
                     context: context,
                     firstDate: DateTime.now().subtract(const Duration(days: 365)),
                     lastDate: DateTime(2030),
-                    builder: (context, child) => Theme(
-                      data: Theme.of(context).copyWith(colorScheme: const ColorScheme.light(primary: Colors.teal)),
-                      child: child!,
-                    ),
                   );
                   if (picked != null) setSheetState(() => selectedRange = picked);
                 },
@@ -107,7 +115,6 @@ class _TripsPageState extends State<TripsPage> {
               ),
               const SizedBox(height: 16),
 
-              // Type Dropdown
               DropdownButtonFormField<String>(
                 value: selectedType,
                 decoration: InputDecoration(
@@ -122,7 +129,6 @@ class _TripsPageState extends State<TripsPage> {
               ),
               const SizedBox(height: 32),
 
-              // Create & Navigate Button
               SizedBox(
                 width: double.infinity,
                 height: 56,
@@ -130,12 +136,13 @@ class _TripsPageState extends State<TripsPage> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.teal,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                    elevation: 0,
                   ),
                   onPressed: () {
+                    final currentUser = ref.read(currentUserProvider);
                     if (nameController.text.isNotEmpty && selectedRange != null) {
                       final newTrip = Trip(
                         id: DateTime.now().millisecondsSinceEpoch.toString(),
+                        userId: currentUser?.id ?? 'guest_user', // Added userId
                         name: nameController.text.trim(),
                         type: selectedType,
                         startDate: selectedRange!.start,
@@ -161,6 +168,8 @@ class _TripsPageState extends State<TripsPage> {
     );
   }
 
+  // ... (Keep _deleteTrip, _buildSegmentHeader, _buildSegment as is)
+
   void _deleteTrip(String tripId) {
     setState(() => _allTrips.removeWhere((t) => t.id == tripId));
     ScaffoldMessenger.of(context).showSnackBar(
@@ -171,7 +180,6 @@ class _TripsPageState extends State<TripsPage> {
   @override
   Widget build(BuildContext context) {
     const primaryTeal = Colors.teal;
-
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -262,93 +270,84 @@ class _TripsPageState extends State<TripsPage> {
     );
   }
 
-Widget _buildTripCard(Trip trip, bool isPast, Color accentColor) {
-  String? coverImageUrl;
-  if (trip.stops.isNotEmpty) {
-    coverImageUrl = trip.stops.first.place.imageUrl;
+  Widget _buildTripCard(Trip trip, bool isPast, Color accentColor) {
+    String? coverImageUrl;
+    if (trip.stops.isNotEmpty) {
+      coverImageUrl = trip.stops.first.place.imageUrl;
+    }
+
+    return GestureDetector(
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(builder: (context) => ItineraryDetailsPage(route: trip)),
+      ),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04), 
+              blurRadius: 10, 
+              offset: const Offset(0, 4)
+            )
+          ],
+        ),
+        child: Column(
+          children: [
+            ClipRRect(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+              child: coverImageUrl != null
+                  ? Image.asset(
+                      coverImageUrl,
+                      height: 140,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stack) => _buildPlaceholder(accentColor),
+                    )
+                  : _buildPlaceholder(accentColor),
+            ),
+            
+            ListTile(
+              title: Text(trip.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+              subtitle: Row(
+                children: [
+                  Text("${trip.type} • "),
+                  if (isPast)
+                    _buildStatusBadge("COMPLETED", Colors.green)
+                  else
+                    Text("${trip.stops.length} Stops Planned"),
+                ],
+              ),
+              trailing: Icon(Icons.chevron_right_rounded, color: Colors.grey.shade400),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
-  return GestureDetector(
-    onTap: () => Navigator.of(context).push(
-      MaterialPageRoute(builder: (context) => ItineraryDetailsPage(route: trip)),
-    ),
-    child: Container(
-      margin: const EdgeInsets.only(bottom: 20),
+  Widget _buildStatusBadge(String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04), 
-            blurRadius: 10, 
-            offset: const Offset(0, 4)
-          )
-        ],
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(6),
       ),
-      child: Column(
-        children: [
-          // Image Section
-          ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-            child: coverImageUrl != null
-                ? Image.asset(
-                    coverImageUrl,
-                    height: 140,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stack) => _buildPlaceholder(accentColor),
-                  )
-                : _buildPlaceholder(accentColor),
-          ),
-          
-          ListTile(
-            title: Text(
-              trip.name, 
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)
-            ),
-            subtitle: Row(
-              children: [
-                Text("${trip.type} • "),
-                if (isPast)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Colors.green.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: const Text(
-                      "COMPLETED",
-                      style: TextStyle(
-                        color: Colors.green,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  )
-                else
-                  Text("${trip.stops.length} Stops Planned"),
-              ],
-            ),
-            trailing: Icon(
-              Icons.chevron_right_rounded, 
-              color: Colors.grey.shade400
-            ),
-          ),
-        ],
+      child: Text(
+        text,
+        style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold),
       ),
-    ),
-  );
-}
+    );
+  }
 
-// Placeholder
-Widget _buildPlaceholder(Color accentColor) {
-  return Container(
-    height: 140,
-    width: double.infinity,
-    color: accentColor.withValues(alpha: 0.1),
-    child: Icon(Icons.add_photo_alternate_outlined, color: accentColor.withValues(alpha: 0.4), size: 40),
-  );
-}
+  Widget _buildPlaceholder(Color accentColor) {
+    return Container(
+      height: 140, width: double.infinity,
+      color: accentColor.withValues(alpha: 0.1),
+      child: Icon(Icons.add_photo_alternate_outlined, color: accentColor.withValues(alpha: 0.4), size: 40),
+    );
+  }
 
   Widget _buildSegment(int index, String label, Color activeColor) {
     bool isActive = _activeSegment == index;

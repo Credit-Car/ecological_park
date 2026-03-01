@@ -5,7 +5,7 @@ import '../models/trip.dart';
 
 class AddTripStopPage extends StatefulWidget {
   final Trip trip;
-  final List<Places> availablePlaces; // Pass your list of places here
+  final List<Places> availablePlaces;
 
   const AddTripStopPage({
     super.key, 
@@ -24,16 +24,27 @@ class _AddTripStopPageState extends State<AddTripStopPage> {
   Places? _selectedPlace;
   DateTime? _selectedDateTime;
 
-  // Date/Time Picker
+  @override
+  void initState() {
+    super.initState();
+    // Start the picker at the trip's start date for better UX
+    _selectedDateTime = widget.trip.startDate;
+  }
+
   void _pickDateTime() async {
+    // Restrict the date picker to stay within the Trip's start and end dates
     final DateTime? pickedDate = await showDatePicker(
       context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime.now(),
-      lastDate: DateTime(2030),
+      initialDate: widget.trip.startDate,
+      firstDate: widget.trip.startDate,
+      lastDate: widget.trip.endDate,
       builder: (context, child) => Theme(
         data: Theme.of(context).copyWith(
-          colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
+          colorScheme: const ColorScheme.light(
+            primary: Colors.teal,
+            onPrimary: Colors.white,
+            onSurface: Colors.black87,
+          ),
         ),
         child: child!,
       ),
@@ -42,7 +53,7 @@ class _AddTripStopPageState extends State<AddTripStopPage> {
     if (pickedDate != null) {
       final TimeOfDay? pickedTime = await showTimePicker(
         context: context,
-        initialTime: TimeOfDay.now(),
+        initialTime: const TimeOfDay(hour: 12, minute: 0),
       );
 
       if (pickedTime != null) {
@@ -58,29 +69,40 @@ class _AddTripStopPageState extends State<AddTripStopPage> {
 
   void _saveStop() {
     if (_formKey.currentState!.validate() && _selectedPlace != null && _selectedDateTime != null) {
+      // Creating a new TripStop using the updated model structure
       final newStop = TripStop(
         place: _selectedPlace!,
         scheduledTime: _selectedDateTime!,
-        customNotes: _notesController.text.trim(),
+        customNotes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
       );
 
+      // Mutate the local trip object (will be reflected in ItineraryDetailsPage)
       widget.trip.stops.add(newStop);
+      
+      // Sort stops by time automatically so the timeline stays chronological
+      widget.trip.stops.sort((a, b) => a.scheduledTime.compareTo(b.scheduledTime));
       
       Navigator.pop(context, true);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a place and a time.')),
+        const SnackBar(
+          content: Text('Please select a building and time.'),
+          behavior: SnackBarBehavior.floating,
+        ),
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    const primaryTeal = Colors.teal;
+
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('Add Stop', style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.transparent,
+        title: const Text('Add Stop', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 22)),
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black,
         elevation: 0,
         centerTitle: true,
       ),
@@ -91,75 +113,79 @@ class _AddTripStopPageState extends State<AddTripStopPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text("Where are you going?", 
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+              const Text("Select Building", 
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black54)),
               const SizedBox(height: 12),
               
-              // Place Picker Card
+              // Place Selection Dropdown
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: Colors.grey[100],
                   borderRadius: BorderRadius.circular(16),
-                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10)],
                 ),
                 child: DropdownButtonFormField<Places>(
                   decoration: const InputDecoration(border: InputBorder.none),
-                  hint: const Text("Select a Place"),
+                  hint: const Text("Where are we going?"),
                   value: _selectedPlace,
+                  icon: const Icon(Icons.location_on_rounded, color: primaryTeal),
                   items: widget.availablePlaces.map((place) {
                     return DropdownMenuItem(
                       value: place,
-                      child: Text(place.name),
+                      child: Text(place.name, style: const TextStyle(fontWeight: FontWeight.w500)),
                     );
                   }).toList(),
                   onChanged: (val) => setState(() => _selectedPlace = val),
                 ),
               ),
               
-              const SizedBox(height: 30),
+              const SizedBox(height: 24),
               
-              const Text("When?", 
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+              const Text("Arrival Time", 
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black54)),
               const SizedBox(height: 12),
 
+              // Date/Time Selection Tile
               InkWell(
                 onTap: _pickDateTime,
+                borderRadius: BorderRadius.circular(16),
                 child: Container(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(18),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: primaryTeal.withValues(alpha: 0.05),
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: _selectedDateTime == null ? Colors.transparent : const Color.fromARGB(255, 92, 184, 174)),
+                    border: Border.all(color: primaryTeal.withValues(alpha: 0.2)),
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.calendar_today, color: const Color.fromARGB(255, 92, 184, 174)),
+                      const Icon(Icons.access_time_filled_rounded, color: primaryTeal),
                       const SizedBox(width: 16),
                       Text(
                         _selectedDateTime == null 
-                          ? "Pick Date & Time" 
+                          ? "Set Arrival Time" 
                           : "${_selectedDateTime!.day}/${_selectedDateTime!.month} @ ${TimeOfDay.fromDateTime(_selectedDateTime!).format(context)}",
-                        style: const TextStyle(fontSize: 16),
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: primaryTeal),
                       ),
+                      const Spacer(),
+                      const Icon(Icons.edit, size: 18, color: primaryTeal),
                     ],
                   ),
                 ),
               ),
 
-              const SizedBox(height: 30),
+              const SizedBox(height: 24),
 
-              const Text("Additional Notes", 
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+              const Text("Task or Notes", 
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black54)),
               const SizedBox(height: 12),
 
               TextFormField(
                 controller: _notesController,
                 maxLines: 3,
                 decoration: InputDecoration(
-                  hintText: "E.g. Don't forget the booking reference...",
+                  hintText: "What are you doing here? (Optional)",
                   filled: true,
-                  fillColor: Colors.white,
+                  fillColor: Colors.grey[100],
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
                     borderSide: BorderSide.none,
@@ -168,18 +194,20 @@ class _AddTripStopPageState extends State<AddTripStopPage> {
               ),
 
               const SizedBox(height: 40),
+              
               SizedBox(
                 width: double.infinity,
-                height: 56,
+                height: 58,
                 child: ElevatedButton(
                   onPressed: _saveStop,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.teal,
+                    backgroundColor: primaryTeal,
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                    elevation: 4,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                    elevation: 0,
                   ),
-                  child: const Text("Add to Route", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  child: const Text("Save to Itinerary", 
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 ),
               ),
             ],

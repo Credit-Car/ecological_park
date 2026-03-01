@@ -2,6 +2,7 @@ import 'places.dart';
 
 class Trip {
   final String id;
+  final String userId;
   final String name;
   final String type;
   final DateTime startDate;
@@ -10,6 +11,7 @@ class Trip {
 
   Trip({
     required this.id,
+    required this.userId,
     required this.name,
     required this.type,
     required this.startDate,
