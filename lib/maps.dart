@@ -13,6 +13,7 @@ class CampusMapViewerPage extends StatefulWidget {
 }
 
 class _CampusMapViewerPageState extends State<CampusMapViewerPage> {
+
   final TextEditingController _searchController = TextEditingController();
   GoogleMapController? _mapController;
   Places? _selectedPlace;
@@ -22,6 +23,9 @@ class _CampusMapViewerPageState extends State<CampusMapViewerPage> {
   final List<Places> _allPlaces = MockData.availablePlaces;
   final GlobalKey _mapKey = GlobalKey(debugLabel: 'mataian_map_key');
 
+  Map<String, BitmapDescriptor> _markerIcons = {};
+  //Map<String, BitmapDescriptor> _customIcons = {};
+
   // Coherent Teal for the AI Guide
   final Color guideTeal = const Color(0xFF14B8A6);
 
@@ -29,6 +33,33 @@ class _CampusMapViewerPageState extends State<CampusMapViewerPage> {
     southwest: const LatLng(23.6545, 121.4065),
     northeast: const LatLng(23.6605, 121.4125),
   );
+  
+@override
+void initState() {
+  super.initState();
+  _loadIcons();
+}
+
+Future<void> _loadIcons() async {
+  final ids = ['p001', 'p002', 'p003', 'p004', 'p005', 'p006'];
+  final paths = [
+    'assets/images/markers/info.png',
+    'assets/images/markers/firefly.png',
+    'assets/images/markers/pond.png',
+    'assets/images/markers/bridge.png',
+    'assets/images/markers/fishing.png',
+    'assets/images/markers/picnic-table.png',
+  ];
+
+  for (int i = 0; i < ids.length; i++) {
+    // Note: Using BitmapDescriptor.asset for modern Flutter Google Maps versions
+    _markerIcons[ids[i]] = await BitmapDescriptor.asset(
+      const ImageConfiguration(size: Size(30, 30)), // Adjust size as needed
+      paths[i],
+    );
+  }
+  if (mounted) setState(() {});
+}
 
   void _onPlaceTap(Places place) {
     setState(() {
@@ -41,6 +72,15 @@ class _CampusMapViewerPageState extends State<CampusMapViewerPage> {
       CameraUpdate.newLatLngZoom(LatLng(place.lat, place.lng), 17.5),
     );
   }
+
+  // double _getMarkerHue(String category) {
+  //   switch (category) {
+  //     case 'Wildlife': return BitmapDescriptor.hueGreen;
+  //     case 'Culture': return BitmapDescriptor.hueOrange;
+  //     case 'Scenic Spot': return BitmapDescriptor.hueAzure;
+  //     default: return BitmapDescriptor.hueRed; // Facilities or others
+  //   }
+  // }
 
   void _openChatForPlace(Places place) {
     showModalBottomSheet(
@@ -74,8 +114,9 @@ class _CampusMapViewerPageState extends State<CampusMapViewerPage> {
       ),
     );
   }
-
-  Future<void> _openGoogleMaps(Places place) async {
+  
+  
+Future<void> _openGoogleMaps(Places place) async {
     final url = 'https://www.google.com/maps/search/?api=1&query=${place.lat},${place.lng}';
     if (await canLaunchUrl(Uri.parse(url))) {
       await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
@@ -125,17 +166,26 @@ class _CampusMapViewerPageState extends State<CampusMapViewerPage> {
     );
   }
 
-  Set<Marker> _buildMarkers() {
-    return _allPlaces.where((p) => _selectedCategory == "All" || p.category == _selectedCategory).map((place) {
-      return Marker(
-        markerId: MarkerId(place.id),
-        position: LatLng(place.lat, place.lng),
-        // DEFAULT RED MARKERS
-        icon: BitmapDescriptor.defaultMarker, 
-        onTap: () => _onPlaceTap(place),
-      );
-    }).toSet();
-  }
+Set<Marker> _buildMarkers() {
+  // Return empty set if icons aren't loaded yet to prevent the "Default Red Pin" flash
+  if (_markerIcons.isEmpty) return {};
+
+  return _allPlaces
+      .where((p) => _selectedCategory == "All" || p.category == _selectedCategory)
+      .map((place) {
+    
+    final bool isSelected = _selectedPlace?.id == place.id;
+    
+    return Marker(
+      markerId: MarkerId(place.id),
+      position: LatLng(place.lat, place.lng),
+      // If custom icon exists, use it; otherwise, use a unique color default
+      icon: _markerIcons[place.id] ?? BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
+      anchor: const Offset(0.5, 0.5),
+      onTap: () => _onPlaceTap(place),
+    );
+  }).toSet();
+}
 
 Widget _buildModernInfoCard() {
     return Container(

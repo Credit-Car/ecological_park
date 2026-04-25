@@ -12,7 +12,7 @@ class MockData {
       detail: 'Introduction to the geographical location and regional context by the Township Office and Agriculture & Tourism Section.',
       lat: 23.6579,
       lng: 121.4095,
-      imageUrl: 'assets/images/ndhu_library.png',
+      imageUrl: 'assets/images/visitor-center.jpg',
     ),
     Places(
       id: 'p002',
@@ -21,7 +21,7 @@ class MockData {
       detail: 'Wetland ecology interpretation area with rich biodiversity and walking paths.',
       lat: 23.6585,
       lng: 121.4102,
-      imageUrl: 'assets/images/lakeside.jpeg',
+      imageUrl: 'assets/images/boardwalk.jpg',
     ),
     Places(
       id: 'p003',
@@ -30,7 +30,7 @@ class MockData {
       detail: 'Habitat for fireflies and aquatic plants; learn about firefly ecology.',
       lat: 23.6590,
       lng: 121.4108,
-      imageUrl: 'assets/images/dorm_V.png',
+      imageUrl: 'assets/images/water-willow.png',
     ),
     Places(
       id: 'p004',
@@ -39,7 +39,7 @@ class MockData {
       detail: 'Overview of the Fudeng Creek watershed and surrounding wetland environment.',
       lat: 23.6582,
       lng: 121.4098,
-      imageUrl: 'assets/images/admin.jpg',
+      imageUrl: 'assets/images/egret-bridge.jpg',
     ),
     Places(
       id: 'p005',
@@ -48,7 +48,7 @@ class MockData {
       detail: 'Experience Barago fishing culture and local indigenous way of life.',
       lat: 23.6573,
       lng: 121.4089,
-      imageUrl: 'assets/images/solar_farm.png',
+      imageUrl: 'assets/images/shin-lu.jpg',
     ),
     Places(
       id: 'p006',
@@ -57,7 +57,7 @@ class MockData {
       detail: 'Waterside dining experience showcasing slow food and traditional cuisine.',
       lat: 23.6568,
       lng: 121.4085,
-      imageUrl: 'assets/images/ndhu_library.png',
+      imageUrl: 'assets/images/red-tile.png',
     ),
   ];
 

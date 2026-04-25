@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart'; // Assuming you use Riverpod for Auth
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'models/trip.dart';
 import 'itinerary_details_page.dart';
 import 'mockdata.dart';
-import 'providers/current_user.dart'; // Import your user provider
+import 'providers/current_user.dart';
 
 class TripsPage extends ConsumerStatefulWidget {
   const TripsPage({super.key});
@@ -16,37 +16,36 @@ class TripsPage extends ConsumerStatefulWidget {
 class _TripsPageState extends ConsumerState<TripsPage> {
   int _activeSegment = 0;
   final PageController _pageController = PageController();
-
-  // Updated list with userId and proper stop references
+  
+  // This will hold our local state of trips during the session
   late List<Trip> _allTrips;
 
   @override
   void initState() {
     super.initState();
-    // In a real app, this would be a Stream or Future from Firebase
-    final currentUser = ref.read(currentUserProvider);
-    final String uid = currentUser?.id ?? 'guest_user';
+    _syncWithMockData();
+  }
 
-    _allTrips = [
-      Trip(
-        id: 'u1',
-        userId: uid, // Added userId
-        name: 'NDHU Library Visit',
-        startDate: DateTime(2026, 3, 10),
-        endDate: DateTime(2026, 3, 15),
-        type: 'Study',
-        stops: MockData.getAllTrips()[0].stops,
+  /// Loads trips from mockdata.dart filtered by the current user
+  void _syncWithMockData() {
+    final currentUser = ref.read(currentUserProvider);
+    // Use the mockUserId from your file if the provider is null (for testing)
+    final String uid = currentUser?.id ?? MockData.mockUserId;
+
+    _allTrips = MockData.getAllTrips()
+        .where((t) => t.userId == uid)
+        .toList();
+  }
+
+  void _deleteTrip(String tripId) {
+    setState(() => _allTrips.removeWhere((t) => t.id == tripId));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text("Journey removed"),
+        behavior: SnackBarBehavior.floating,
+        margin: EdgeInsets.all(20),
       ),
-      Trip(
-        id: 'p1',
-        userId: uid, // Added userId
-        name: 'Solar Farm Expo',
-        startDate: DateTime(2025, 12, 20),
-        endDate: DateTime(2025, 12, 21),
-        type: 'Leisure',
-        stops: MockData.getAllTrips()[1].stops,
-      ),
-    ];
+    );
   }
 
   void _showCreateTripSheet() {
@@ -64,7 +63,7 @@ class _TripsPageState extends ConsumerState<TripsPage> {
       builder: (context) => StatefulBuilder(
         builder: (context, setSheetState) => Padding(
           padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+            bottom: MediaQuery.of(context).viewInsets.bottom + 24,
             left: 24, right: 24, top: 24
           ),
           child: Column(
@@ -79,7 +78,6 @@ class _TripsPageState extends ConsumerState<TripsPage> {
                 controller: nameController,
                 decoration: InputDecoration(
                   labelText: "Trip Name",
-                  hintText: "e.g. Hiking in Hualien",
                   filled: true,
                   fillColor: Colors.grey[50],
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
@@ -91,7 +89,7 @@ class _TripsPageState extends ConsumerState<TripsPage> {
                 onTap: () async {
                   final picked = await showDateRangePicker(
                     context: context,
-                    firstDate: DateTime.now().subtract(const Duration(days: 365)),
+                    firstDate: DateTime.now().subtract(const Duration(days: 30)),
                     lastDate: DateTime(2030),
                   );
                   if (picked != null) setSheetState(() => selectedRange = picked);
@@ -107,7 +105,7 @@ class _TripsPageState extends ConsumerState<TripsPage> {
                         selectedRange == null 
                           ? "Select Dates" 
                           : "${DateFormat('MMM d').format(selectedRange!.start)} - ${DateFormat('MMM d').format(selectedRange!.end)}",
-                        style: TextStyle(color: selectedRange == null ? Colors.grey[600] : Colors.black, fontWeight: FontWeight.w500),
+                        style: TextStyle(color: selectedRange == null ? Colors.grey[600] : Colors.black),
                       ),
                     ],
                   ),
@@ -123,7 +121,7 @@ class _TripsPageState extends ConsumerState<TripsPage> {
                   fillColor: Colors.grey[50],
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
                 ),
-                items: ['Leisure', 'Business', 'Study', 'Adventure']
+                items: ['Leisure', 'Education', 'Culture', 'Adventure']
                     .map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
                 onChanged: (val) => setSheetState(() => selectedType = val!),
               ),
@@ -136,13 +134,13 @@ class _TripsPageState extends ConsumerState<TripsPage> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.teal,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    elevation: 0,
                   ),
                   onPressed: () {
-                    final currentUser = ref.read(currentUserProvider);
                     if (nameController.text.isNotEmpty && selectedRange != null) {
                       final newTrip = Trip(
-                        id: DateTime.now().millisecondsSinceEpoch.toString(),
-                        userId: currentUser?.id ?? 'guest_user', // Added userId
+                        id: 'trip_${DateTime.now().millisecondsSinceEpoch}',
+                        userId: ref.read(currentUserProvider)?.id ?? MockData.mockUserId,
                         name: nameController.text.trim(),
                         type: selectedType,
                         startDate: selectedRange!.start,
@@ -150,7 +148,7 @@ class _TripsPageState extends ConsumerState<TripsPage> {
                         stops: [], 
                       );
                       
-                      setState(() => _allTrips.add(newTrip));
+                      setState(() => _allTrips.insert(0, newTrip));
                       Navigator.pop(context);
                       Navigator.of(context).push(
                         MaterialPageRoute(builder: (context) => ItineraryDetailsPage(route: newTrip)),
@@ -168,22 +166,14 @@ class _TripsPageState extends ConsumerState<TripsPage> {
     );
   }
 
-  // ... (Keep _deleteTrip, _buildSegmentHeader, _buildSegment as is)
-
-  void _deleteTrip(String tripId) {
-    setState(() => _allTrips.removeWhere((t) => t.id == tripId));
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Trip removed"), behavior: SnackBarBehavior.floating),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    const primaryTeal = Colors.teal;
+    const accentColor = Colors.teal;
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text("My Journeys", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 24)),
+        title: const Text("My Journeys", 
+          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 26, letterSpacing: -1)),
         centerTitle: false,
         elevation: 0,
         backgroundColor: Colors.white,
@@ -191,45 +181,68 @@ class _TripsPageState extends ConsumerState<TripsPage> {
       ),
       body: Column(
         children: [
-          _buildSegmentHeader(primaryTeal),
+          _buildSegmentHeader(accentColor),
           Expanded(
             child: PageView(
               controller: _pageController,
               onPageChanged: (index) => setState(() => _activeSegment = index),
               children: [
-                _buildTripList(isPast: false, accentColor: primaryTeal),
-                _buildTripList(isPast: true, accentColor: primaryTeal),
+                _buildTripList(isPast: false, accentColor: accentColor),
+                _buildTripList(isPast: true, accentColor: accentColor),
               ],
             ),
           ),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: primaryTeal,
+        backgroundColor: accentColor,
         onPressed: _showCreateTripSheet,
         icon: const Icon(Icons.add_rounded, color: Colors.white),
-        label: const Text('New Trip', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        label: const Text('Plan New', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
       ),
     );
   }
 
-  Widget _buildSegmentHeader(Color primaryTeal) {
+  Widget _buildSegmentHeader(Color color) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-      height: 54,
-      padding: const EdgeInsets.all(5),
-      decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(16)),
+      margin: const EdgeInsets.fromLTRB(20, 10, 20, 20),
+      height: 50,
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(14)),
       child: Row(
         children: [
-          _buildSegment(0, 'Upcoming', primaryTeal),
-          _buildSegment(1, 'Past', primaryTeal),
+          _buildSegment(0, 'Upcoming', color),
+          _buildSegment(1, 'History', color),
         ],
+      ),
+    );
+  }
+
+  Widget _buildSegment(int index, String label, Color color) {
+    bool isActive = _activeSegment == index;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => _pageController.animateToPage(index, 
+            duration: const Duration(milliseconds: 300), curve: Curves.decelerate),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          decoration: BoxDecoration(
+            color: isActive ? Colors.white : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+            boxShadow: isActive ? [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4)] : [],
+          ),
+          alignment: Alignment.center,
+          child: Text(label, style: TextStyle(
+            fontWeight: FontWeight.bold, 
+            color: isActive ? color : Colors.grey[500])),
+        ),
       ),
     );
   }
 
   Widget _buildTripList({required bool isPast, required Color accentColor}) {
     final now = DateTime.now();
+    // Filter trips based on time and the data from MockData
     final trips = _allTrips.where((t) {
       return isPast ? t.startDate.isBefore(now) : t.startDate.isAfter(now);
     }).toList();
@@ -239,17 +252,17 @@ class _TripsPageState extends ConsumerState<TripsPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.explore_off_outlined, size: 64, color: Colors.grey[300]),
-            const SizedBox(height: 16),
-            Text("No ${isPast ? 'past' : 'upcoming'} trips found", 
-              style: TextStyle(color: Colors.grey[500], fontWeight: FontWeight.w500)),
+            Icon(Icons.map_outlined, size: 48, color: Colors.grey[200]),
+            const SizedBox(height: 12),
+            Text("No ${isPast ? 'past' : 'upcoming'} journeys", 
+              style: TextStyle(color: Colors.grey[400])),
           ],
         ),
       );
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 20),
       itemCount: trips.length,
       itemBuilder: (context, index) {
         final trip = trips[index];
@@ -259,67 +272,58 @@ class _TripsPageState extends ConsumerState<TripsPage> {
           onDismissed: (_) => _deleteTrip(trip.id),
           background: Container(
             alignment: Alignment.centerRight,
-            padding: const EdgeInsets.only(right: 25),
-            margin: const EdgeInsets.only(bottom: 20),
-            decoration: BoxDecoration(color: Colors.redAccent, borderRadius: BorderRadius.circular(24)),
-            child: const Icon(Icons.delete_outline_rounded, color: Colors.white, size: 28),
+            padding: const EdgeInsets.only(right: 20),
+            margin: const EdgeInsets.only(bottom: 16),
+            decoration: BoxDecoration(color: Colors.red[50], borderRadius: BorderRadius.circular(20)),
+            child: Icon(Icons.delete_outline, color: Colors.red[400]),
           ),
-          child: _buildTripCard(trip, isPast, accentColor),
+          child: _buildTripCard(trip, accentColor),
         );
       },
     );
   }
 
-  Widget _buildTripCard(Trip trip, bool isPast, Color accentColor) {
-    String? coverImageUrl;
-    if (trip.stops.isNotEmpty) {
-      coverImageUrl = trip.stops.first.place.imageUrl;
-    }
+  Widget _buildTripCard(Trip trip, Color color) {
+    // Dynamically pull the image from the first stop in MockData
+    String? coverImage = trip.stops.isNotEmpty ? trip.stops.first.place.imageUrl : null;
 
     return GestureDetector(
       onTap: () => Navigator.of(context).push(
         MaterialPageRoute(builder: (context) => ItineraryDetailsPage(route: trip)),
       ),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 20),
+        margin: const EdgeInsets.only(bottom: 16),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04), 
-              blurRadius: 10, 
-              offset: const Offset(0, 4)
-            )
-          ],
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.grey[100]!),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4))],
         ),
         child: Column(
           children: [
             ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-              child: coverImageUrl != null
-                  ? Image.asset(
-                      coverImageUrl,
-                      height: 140,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stack) => _buildPlaceholder(accentColor),
-                    )
-                  : _buildPlaceholder(accentColor),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+              child: coverImage != null
+                  ? Image.asset(coverImage, height: 120, width: double.infinity, fit: BoxFit.cover,
+                      errorBuilder: (c, e, s) => _buildPlaceholder(color))
+                  : _buildPlaceholder(color),
             ),
-            
             ListTile(
-              title: Text(trip.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-              subtitle: Row(
-                children: [
-                  Text("${trip.type} • "),
-                  if (isPast)
-                    _buildStatusBadge("COMPLETED", Colors.green)
-                  else
-                    Text("${trip.stops.length} Stops Planned"),
-                ],
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              title: Text(trip.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              subtitle: Padding(
+                padding: const EdgeInsets.only(top: 4.0),
+                child: Row(
+                  children: [
+                    Icon(Icons.calendar_month, size: 14, color: Colors.grey[400]),
+                    const SizedBox(width: 4),
+                    Text(DateFormat('MMM d').format(trip.startDate), style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+                    const Text("  •  "),
+                    Text("${trip.stops.length} Stops", style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 12)),
+                  ],
+                ),
               ),
-              trailing: Icon(Icons.chevron_right_rounded, color: Colors.grey.shade400),
+              trailing: const Icon(Icons.chevron_right, color: Colors.grey),
             ),
           ],
         ),
@@ -327,45 +331,11 @@ class _TripsPageState extends ConsumerState<TripsPage> {
     );
   }
 
-  Widget _buildStatusBadge(String text, Color color) {
+  Widget _buildPlaceholder(Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold),
-      ),
-    );
-  }
-
-  Widget _buildPlaceholder(Color accentColor) {
-    return Container(
-      height: 140, width: double.infinity,
-      color: accentColor.withValues(alpha: 0.1),
-      child: Icon(Icons.add_photo_alternate_outlined, color: accentColor.withValues(alpha: 0.4), size: 40),
-    );
-  }
-
-  Widget _buildSegment(int index, String label, Color activeColor) {
-    bool isActive = _activeSegment == index;
-    return Expanded(
-      child: GestureDetector(
-        onTap: () => _pageController.animateToPage(index, 
-            duration: const Duration(milliseconds: 400), curve: Curves.easeInOutCubic),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 250),
-          decoration: BoxDecoration(
-            color: isActive ? Colors.white : Colors.transparent,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: isActive ? [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4, offset: const Offset(0, 2))] : [],
-          ),
-          alignment: Alignment.center,
-          child: Text(label, style: TextStyle(fontWeight: FontWeight.bold, color: isActive ? activeColor : Colors.grey[500])),
-        ),
-      ),
+      height: 120, width: double.infinity,
+      color: color.withOpacity(0.05),
+      child: Icon(Icons.landscape_rounded, color: color.withOpacity(0.2), size: 32),
     );
   }
 }

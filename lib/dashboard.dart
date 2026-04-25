@@ -191,7 +191,7 @@ class _DashboardState extends State<Dashboard> {
                     onChanged: _onSearchChanged,
                     decoration: InputDecoration(
                       prefixIcon: const Icon(Icons.search, color: Colors.teal),
-                      hintText: "Search NDHU places...",
+                      hintText: "Explore Matai’an...",
                       filled: true,
                       fillColor: Colors.white,
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: BorderSide.none),

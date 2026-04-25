@@ -106,7 +106,7 @@ class _MainNavigationState extends ConsumerState<MainNavigation> {
                 //   style: TextStyle(fontSize: 16, color: Colors.black54),
                 // ),
                 Text(
-                  "NDHU Travel App",
+                  "馬太鞍溼地休閒農業區",
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
@@ -161,7 +161,7 @@ class _MainNavigationState extends ConsumerState<MainNavigation> {
           BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
           BottomNavigationBarItem(icon: Icon(Icons.map), label: "Plan"),
           BottomNavigationBarItem(icon: Icon(Icons.gps_fixed), label: "Map"),
-          BottomNavigationBarItem(icon: Icon(Icons.book), label: "GuideBook"),
+          BottomNavigationBarItem(icon: Icon(Icons.auto_awesome), label: "GuideBook"),
           BottomNavigationBarItem(icon: Icon(Icons.settings), label: "Settings"),
         ],
       ),
