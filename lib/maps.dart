@@ -20,9 +20,9 @@ class _CampusMapViewerPageState extends State<CampusMapViewerPage> {
 
   final List<Places> _allPlaces = MockData.availablePlaces;
 
-  final LatLngBounds _ndhuBounds = LatLngBounds(
-    southwest: const LatLng(23.8850, 121.5280),
-    northeast: const LatLng(23.9050, 121.5550),
+  final LatLngBounds _mataianBounds = LatLngBounds(
+  southwest: const LatLng(23.6545, 121.4065),
+  northeast: const LatLng(23.6605, 121.4125),
   );
 
   void _performSearch(String query) {
@@ -61,8 +61,8 @@ class _CampusMapViewerPageState extends State<CampusMapViewerPage> {
         children: [
           // Google Map
           GoogleMap(
-            initialCameraPosition: const CameraPosition(target: LatLng(23.8967, 121.5398), zoom: 16),
-            cameraTargetBounds: CameraTargetBounds(_ndhuBounds),
+            initialCameraPosition: const CameraPosition(target: LatLng(23.65775, 121.40966), zoom: 16,),
+            cameraTargetBounds: CameraTargetBounds(_mataianBounds),
             minMaxZoomPreference: const MinMaxZoomPreference(14, 20),
             onMapCreated: (controller) => _mapController = controller,
             myLocationButtonEnabled: false,
@@ -123,7 +123,7 @@ class _CampusMapViewerPageState extends State<CampusMapViewerPage> {
         controller: _searchController,
         onChanged: _performSearch,
         decoration: const InputDecoration(
-          hintText: "Explore NDHU Buildings...",
+          hintText: "Explore Matai’an Wetland...",
           prefixIcon: Icon(Icons.search, color: Color(0xFF5D5FEF)),
           border: InputBorder.none,
           contentPadding: EdgeInsets.symmetric(vertical: 15),
@@ -136,7 +136,7 @@ class _CampusMapViewerPageState extends State<CampusMapViewerPage> {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
-        children: ["All", "Academic", "Dorm", "Sports", "Administrative"].map((cat) {
+        children: ["All", "Scenic Spot", "Wildlife", "Culture", "Facility"].map((cat) {
           bool isSelected = _selectedCategory == cat;
           return Padding(
             padding: const EdgeInsets.only(right: 8),
