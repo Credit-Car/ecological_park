@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:pointer_interceptor/pointer_interceptor.dart';
 import 'models/places.dart';
 import 'mockdata.dart';
@@ -19,25 +20,15 @@ class _CampusMapViewerPageState extends State<CampusMapViewerPage> {
   String _selectedCategory = "All";
 
   final List<Places> _allPlaces = MockData.availablePlaces;
+  final GlobalKey _mapKey = GlobalKey(debugLabel: 'mataian_map_key');
+
+  // Coherent Teal for the AI Guide
+  final Color guideTeal = const Color(0xFF14B8A6);
 
   final LatLngBounds _mataianBounds = LatLngBounds(
-  southwest: const LatLng(23.6545, 121.4065),
-  northeast: const LatLng(23.6605, 121.4125),
+    southwest: const LatLng(23.6545, 121.4065),
+    northeast: const LatLng(23.6605, 121.4125),
   );
-
-  void _performSearch(String query) {
-    setState(() {
-      if (query.isEmpty && _selectedCategory == "All") {
-        _searchResults = [];
-      } else {
-        _searchResults = _allPlaces.where((place) {
-          bool matchesQuery = place.name.toLowerCase().contains(query.toLowerCase());
-          bool matchesCategory = _selectedCategory == "All" || place.category == _selectedCategory;
-          return matchesQuery && matchesCategory;
-        }).toList();
-      }
-    });
-  }
 
   void _onPlaceTap(Places place) {
     setState(() {
@@ -51,46 +42,83 @@ class _CampusMapViewerPageState extends State<CampusMapViewerPage> {
     );
   }
 
+  void _openChatForPlace(Places place) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(25))),
+      builder: (context) => SizedBox(
+        height: MediaQuery.of(context).size.height * 0.75,
+        child: Column(
+          children: [
+            const SizedBox(height: 12),
+            Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(10))),
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Text("Ask about ${place.name}", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  _chatBubble("What is special about this place?", false),
+                  _chatBubble("This area is known for wetland biodiversity and local culture.", true),
+                ],
+              ),
+            ),
+            _chatInput(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openGoogleMaps(Places place) async {
+    final url = 'https://www.google.com/maps/search/?api=1&query=${place.lat},${place.lng}';
+    if (await canLaunchUrl(Uri.parse(url))) {
+      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    const primaryColor = Color(0xFF5D5FEF);
-
     return Scaffold(
-      backgroundColor: Colors.white,
       body: Stack(
         children: [
-          // Google Map
           GoogleMap(
-            initialCameraPosition: const CameraPosition(target: LatLng(23.65775, 121.40966), zoom: 16,),
+            key: _mapKey,
+            initialCameraPosition: const CameraPosition(target: LatLng(23.65775, 121.40966), zoom: 17),
             cameraTargetBounds: CameraTargetBounds(_mataianBounds),
-            minMaxZoomPreference: const MinMaxZoomPreference(14, 20),
             onMapCreated: (controller) => _mapController = controller,
-            myLocationButtonEnabled: false,
-            zoomControlsEnabled: false,
             markers: _buildMarkers(),
             onTap: (_) => setState(() => _selectedPlace = null),
+            zoomControlsEnabled: false,
+            myLocationButtonEnabled: false,
           ),
+
+          // TOP UI
           Positioned(
-            top: 20, left: 20, right: 20,
+            top: MediaQuery.of(context).padding.top + 10,
+            left: 16, right: 16,
             child: PointerInterceptor(
               child: Column(
                 children: [
-                  _buildSearchBar(primaryColor),
-                  const SizedBox(height: 12),
-                  _buildFilterChips(primaryColor),
+                  _buildSearchBar(),
+                  const SizedBox(height: 8),
+                  _buildFilterChips(),
                   if (_searchResults.isNotEmpty) _buildSearchResultsDropdown(),
                 ],
               ),
             ),
           ),
 
-          // Info Card
+          // BOTTOM NAME CARD
           if (_selectedPlace != null)
             Positioned(
-              bottom: 30, left: 20, right: 20,
-              child: PointerInterceptor(
-                child: _buildInfoCard(primaryColor),
-              ),
+              bottom: 24, left: 16, right: 16,
+              child: PointerInterceptor(child: _buildModernInfoCard()),
             ),
         ],
       ),
@@ -98,58 +126,160 @@ class _CampusMapViewerPageState extends State<CampusMapViewerPage> {
   }
 
   Set<Marker> _buildMarkers() {
-    return _allPlaces.map((place) {
+    return _allPlaces.where((p) => _selectedCategory == "All" || p.category == _selectedCategory).map((place) {
       return Marker(
-        markerId: MarkerId(place.name),
+        markerId: MarkerId(place.id),
         position: LatLng(place.lat, place.lng),
-        icon: BitmapDescriptor.defaultMarkerWithHue(
-          _selectedPlace?.name == place.name 
-              ? BitmapDescriptor.hueViolet 
-              : BitmapDescriptor.hueAzure,
-        ),
+        // DEFAULT RED MARKERS
+        icon: BitmapDescriptor.defaultMarker, 
         onTap: () => _onPlaceTap(place),
       );
     }).toSet();
   }
 
-  Widget _buildSearchBar(Color primaryColor) {
+Widget _buildModernInfoCard() {
     return Container(
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 5))],
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.12), 
+            blurRadius: 25, 
+            offset: const Offset(0, 8)
+          )
+        ],
       ),
-      child: TextField(
-        controller: _searchController,
-        onChanged: _performSearch,
-        decoration: const InputDecoration(
-          hintText: "Explore Matai’an Wetland...",
-          prefixIcon: Icon(Icons.search, color: Color(0xFF5D5FEF)),
-          border: InputBorder.none,
-          contentPadding: EdgeInsets.symmetric(vertical: 15),
-        ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              // Image Thumbnail
+              ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: Image.asset(
+                  _selectedPlace!.imageUrl, 
+                  width: 70, height: 70, fit: BoxFit.cover, 
+                  errorBuilder: (c, e, s) => Container(
+                    width: 70, height: 70, 
+                    color: Colors.grey[100], 
+                    child: const Icon(Icons.map_rounded, color: Colors.grey)
+                  )
+                ),
+              ),
+              const SizedBox(width: 16),
+              // Name and Category
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(_selectedPlace!.name, 
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: -0.5)),
+                    const SizedBox(height: 4),
+                    // Category Badge
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: guideTeal.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        _selectedPlace!.category.toUpperCase(), 
+                        style: TextStyle(color: guideTeal, fontWeight: FontWeight.bold, fontSize: 10, letterSpacing: 0.5)
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                onPressed: () => setState(() => _selectedPlace = null), 
+                icon: const Icon(Icons.close_rounded, size: 22, color: Colors.grey)
+              ),
+            ],
+          ),
+          
+          // STOP DETAILS SECTION
+          const SizedBox(height: 16),
+          Text(
+            _selectedPlace!.detail, 
+            maxLines: 3, 
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: Colors.grey.shade600, 
+              fontSize: 13, 
+              height: 1.5, // Improves readability
+              fontStyle: FontStyle.italic
+            ),
+          ),
+          
+          const SizedBox(height: 20),
+          
+          // COHERENT BUTTON ROW
+          Row(
+            children: [
+              Expanded(
+                flex: 3,
+                child: SizedBox(
+                  height: 52,
+                  child: ElevatedButton.icon(
+                    onPressed: () => _openChatForPlace(_selectedPlace!),
+                    icon: const Icon(Icons.auto_awesome, size: 18),
+                    label: const Text("Ask Guide", style: TextStyle(fontWeight: FontWeight.bold)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: guideTeal, 
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                flex: 2,
+                child: SizedBox(
+                  height: 52,
+                  child: OutlinedButton.icon(
+                    onPressed: () => _openGoogleMaps(_selectedPlace!),
+                    icon: const Icon(Icons.directions_rounded, size: 18),
+                    label: const Text("Go", style: TextStyle(fontWeight: FontWeight.bold)),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: guideTeal,
+                      side: BorderSide(color: guideTeal.withOpacity(0.2), width: 2),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildFilterChips(Color primaryColor) {
+  Widget _buildFilterChips() {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
-        children: ["All", "Scenic Spot", "Wildlife", "Culture", "Facility"].map((cat) {
+        children: ["All", "Wildlife", "Culture", "Scenic Spot", "Facility"].map((cat) {
           bool isSelected = _selectedCategory == cat;
           return Padding(
             padding: const EdgeInsets.only(right: 8),
             child: ChoiceChip(
               label: Text(cat),
               selected: isSelected,
-              selectedColor: primaryColor.withOpacity(0.2),
-              onSelected: (val) {
-                setState(() {
-                  _selectedCategory = cat;
-                  _performSearch(_searchController.text);
-                });
+              // FIX: Default fallback color prevents the Null error
+              selectedColor: switch(cat) {
+                "Wildlife" => Colors.green.shade300,
+                "Culture" => Colors.orange.shade300,
+                "Scenic Spot" => Colors.blue.shade300,
+                _ => Colors.grey.shade300, 
               },
+              onSelected: (val) => setState(() => _selectedCategory = cat),
             ),
           );
         }).toList(),
@@ -157,88 +287,52 @@ class _CampusMapViewerPageState extends State<CampusMapViewerPage> {
     );
   }
 
-  Widget _buildSearchResultsDropdown() {
+  // --- UI HELPER WIDGETS ---
+
+  Widget _buildSearchBar() {
     return Container(
-      margin: const EdgeInsets.only(top: 5),
-      constraints: const BoxConstraints(maxHeight: 250),
-      decoration: BoxDecoration(
-        color: Colors.white, 
-        borderRadius: BorderRadius.circular(15),
-        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10)],
-      ),
-      child: ListView.builder(
-        shrinkWrap: true,
-        padding: EdgeInsets.zero,
-        itemCount: _searchResults.length,
-        itemBuilder: (context, i) => ListTile(
-          title: Text(_searchResults[i].name),
-          subtitle: Text(_searchResults[i].category),
-          onTap: () => _onPlaceTap(_searchResults[i]),
-        ),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(15), boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10)]),
+      child: TextField(
+        controller: _searchController,
+        onChanged: (v) => setState(() => _searchResults = _allPlaces.where((p) => p.name.toLowerCase().contains(v.toLowerCase())).toList()),
+        decoration: const InputDecoration(hintText: "Explore Matai’an...", icon: Icon(Icons.search), border: InputBorder.none),
       ),
     );
   }
 
-  Widget _buildInfoCard(Color primaryColor) {
+  Widget _buildSearchResultsDropdown() {
     return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(25),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.12), blurRadius: 20)],
+      margin: const EdgeInsets.only(top: 4),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+      child: ListView.builder(
+        shrinkWrap: true,
+        itemCount: _searchResults.length,
+        itemBuilder: (c, i) => ListTile(title: Text(_searchResults[i].name), onTap: () => _onPlaceTap(_searchResults[i])),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+    );
+  }
+
+  Widget _chatBubble(String text, bool isBot) {
+    return Align(
+      alignment: isBot ? Alignment.centerLeft : Alignment.centerRight,
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 6),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(color: isBot ? Colors.grey[100] : guideTeal, borderRadius: BorderRadius.circular(15)),
+        child: Text(text, style: TextStyle(color: isBot ? Colors.black87 : Colors.white)),
+      ),
+    );
+  }
+
+  Widget _chatInput() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+      child: Row(
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(15),
-                child: Image.asset(
-                  _selectedPlace!.imageUrl,
-                  width: 85, height: 85, fit: BoxFit.cover,
-                  errorBuilder: (c, e, s) => Container(width: 85, height: 85, color: Colors.grey[100], child: const Icon(Icons.business)),
-                ),
-              ),
-              const SizedBox(width: 15),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(_selectedPlace!.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 4),
-                    Text(_selectedPlace!.category, style: TextStyle(color: primaryColor, fontWeight: FontWeight.w600, fontSize: 13)),
-                    const SizedBox(height: 4),
-                    Text(_selectedPlace!.detail, style: const TextStyle(color: Colors.grey, fontSize: 13)),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Row(
-            children: [
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: () {}, // For viewing purposes
-                  icon: const Icon(Icons.info_outline, size: 18),
-                  label: const Text("Building Wiki"),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.grey[100],
-                    foregroundColor: Colors.black87,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              IconButton(
-                icon: const Icon(Icons.close_rounded, color: Colors.grey),
-                onPressed: () => setState(() => _selectedPlace = null),
-              )
-            ],
-          )
+          Expanded(child: TextField(decoration: InputDecoration(hintText: "Ask Guide...", border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))))),
+          const SizedBox(width: 8),
+          IconButton(onPressed: () {}, icon: Icon(Icons.send, color: guideTeal)),
         ],
       ),
     );

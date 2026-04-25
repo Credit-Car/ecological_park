@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:pointer_interceptor/pointer_interceptor.dart';
 import 'package:intl/intl.dart';
 import 'models/trip.dart';
 import 'add_itinerary_item_page.dart';
@@ -16,188 +14,124 @@ class ItineraryDetailsPage extends StatefulWidget {
 }
 
 class _ItineraryDetailsPageState extends State<ItineraryDetailsPage> {
-  GoogleMapController? _mapController;
-  final Set<Marker> _markers = {};
-  final Set<Polyline> _polylines = {};
   final DraggableScrollableController _sheetController = DraggableScrollableController();
 
-  @override
-  void initState() {
-    super.initState();
-    _loadMapData();
+String _getStaticMapUrl() {
+  if (widget.route.stops.isEmpty) return "";
+
+  //const String navyColor = "0x000080";
+  const String apiKey = 'AIzaSyA311vNSU51Bmatl-h9OPEQNT-isyeoLiw';
+
+  String path = "path=color:red|weight:5";
+  for (var stop in widget.route.stops) {
+    path += "|${stop.place.lat},${stop.place.lng}";
   }
 
-  /// Updates the Map Markers and Path whenever data changes
-  void _loadMapData() {
-    setState(() {
-      _markers.clear();
-      _polylines.clear();
-      final List<LatLng> points = [];
-      
-      for (int i = 0; i < widget.route.stops.length; i++) {
-        final stop = widget.route.stops[i];
-        final position = LatLng(stop.place.lat, stop.place.lng);
-        points.add(position);
-        
-        _markers.add(Marker(
-          markerId: MarkerId(stop.place.id), // Using the new Places ID
-          position: position,
-          infoWindow: InfoWindow(title: stop.place.name, snippet: stop.place.category),
-          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
-        ));
-      }
-      
-      if (points.length >= 2) {
-        _polylines.add(Polyline(
-          polylineId: PolylineId(widget.route.id), // Using Trip ID for the path
-          points: points,
-          color: Colors.teal.shade300,
-          width: 5,
-          jointType: JointType.round,
-        ));
-      }
-    });
+  String markers = "markers=color:red|size:small";
+  for (var stop in widget.route.stops) {
+    markers += "|${stop.place.lat},${stop.place.lng}";
   }
-
-  /// Calculates the bounds to show all stops on the screen
-  void _centerMapOnRoute() {
-    if (_mapController == null || widget.route.stops.isEmpty) return;
-    
-    double minLat = widget.route.stops.first.place.lat;
-    double minLng = widget.route.stops.first.place.lng;
-    double maxLat = widget.route.stops.first.place.lat;
-    double maxLng = widget.route.stops.first.place.lng;
-    
-    for (var stop in widget.route.stops) {
-      if (stop.place.lat < minLat) minLat = stop.place.lat;
-      if (stop.place.lat > maxLat) maxLat = stop.place.lat;
-      if (stop.place.lng < minLng) minLng = stop.place.lng;
-      if (stop.place.lng > maxLng) maxLng = stop.place.lng;
-    }
-    
-    _mapController!.animateCamera(CameraUpdate.newLatLngBounds(
-      LatLngBounds(southwest: LatLng(minLat, minLng), northeast: LatLng(maxLat, maxLng)), 
-      80, // Padding
-    ));
-  }
+  
+  return "https://maps.googleapis.com/maps/api/staticmap?"
+      "size=800x1200&"
+      "scale=2&" // High-DPI for mobile web
+      "maptype=roadmap&"
+      "$path&"
+      "$markers&"
+      "key=$apiKey";
+}
 
   Future<void> _exportToGoogleMaps() async {
-    if (widget.route.stops.length < 2) return;
-    final first = widget.route.stops.first.place;
-    final last = widget.route.stops.last.place;
-    // Note: Replaced curly brace typo in your original URL template
-    final url = 'https://www.google.com/maps/dir/?api=1&origin=${first.lat},${first.lng}&destination=${last.lat},${last.lng}&travelmode=walking';
+    if (widget.route.stops.isEmpty) return;
+
+    final origin = widget.route.stops.first.place;
+    final destination = widget.route.stops.last.place;
     
-    if (await canLaunchUrl(Uri.parse(url))) {
-      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+    String waypoints = "";
+    if (widget.route.stops.length > 2) {
+      waypoints = "&waypoints=" + widget.route.stops
+          .sublist(1, widget.route.stops.length - 1)
+          .map((s) => "${s.place.lat},${s.place.lng}")
+          .join('|');
     }
+
+    final url = 'https://www.google.com/maps/dir/?api=1'
+        '&origin=${origin.lat},${origin.lng}'
+        '&destination=${destination.lat},${destination.lng}'
+        '$waypoints'
+        '&travelmode=walking';
+
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  Future<void> _navigateToAddStop() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AddTripStopPage(
+          trip: widget.route,
+          availablePlaces: MockData.availablePlaces,
+        ),
+      ),
+    );
+    if (result == true) setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
-    const primaryTeal = Color.fromARGB(255, 98, 131, 128);
-
     return Scaffold(
-      backgroundColor: Colors.white,
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
+        backgroundColor: Colors.white.withOpacity(0.85),
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, size: 20),
+          icon: const Icon(Icons.arrow_back_ios_new, size: 18, color: Colors.black),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(widget.route.name, 
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-        actions: [
-          if (widget.route.stops.length >= 2)
-            IconButton(
-              icon: const Icon(Icons.share_location_rounded),
-              onPressed: _exportToGoogleMaps,
-            ),
-        ],
-        elevation: 0,
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          // Navigating to the Add Page with updated parameters
-          final result = await Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => AddTripStopPage(
-                trip: widget.route, // Passing the full Trip object
-                availablePlaces: MockData.availablePlaces,
-              ),
-            ),
-          );
-          
-          if (result == true) {
-            _loadMapData();
-            _centerMapOnRoute();
-          }
-        },
-        backgroundColor: Colors.teal.shade700,
-        child: const Icon(Icons.add_location_alt_rounded, color: Colors.white),
+          style: const TextStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.w900)),
       ),
       body: Stack(
         children: [
-          // MAP BACKGROUND
+          // MINIMALIST MAP BACKGROUND
           Positioned.fill(
-            child: PointerInterceptor(
-              child: GoogleMap(
-                initialCameraPosition: CameraPosition(
-                  target: widget.route.stops.isNotEmpty
-                      ? LatLng(widget.route.stops.first.place.lat, widget.route.stops.first.place.lng)
-                      : const LatLng(23.8967, 121.5398),
-                  zoom: 15,
-                ),
-                onMapCreated: (controller) {
-                  _mapController = controller;
-                  if (widget.route.stops.length >= 2) {
-                    Future.delayed(const Duration(milliseconds: 500), _centerMapOnRoute);
-                  }
-                },
-                markers: _markers,
-                polylines: _polylines,
-                zoomControlsEnabled: false,
-                myLocationButtonEnabled: false,
-                mapToolbarEnabled: false,
-              ),
+            child: Image.network(
+              _getStaticMapUrl(),
+              fit: BoxFit.cover,
+              loadingBuilder: (context, child, loadingProgress) {
+                if (loadingProgress == null) return child;
+                return Container(color: Colors.white, child: const Center(child: CircularProgressIndicator(color: Colors.teal)));
+              },
+              errorBuilder: (context, e, s) => Container(color: Colors.teal.shade50, child: const Icon(Icons.map_outlined, size: 48, color: Colors.teal)),
             ),
           ),
 
-          // BOTTOM DRAGGABLE SHEET
+          // DRAGGABLE ITINERARY
           DraggableScrollableSheet(
             controller: _sheetController,
             initialChildSize: 0.4,
             minChildSize: 0.15,
-            maxChildSize: 0.85,
+            maxChildSize: 1.0,
             snap: true,
-            snapSizes: const [0.15, 0.4, 0.85],
             builder: (context, scrollController) {
               return Container(
-                decoration: const BoxDecoration(
-                  color: Color(0xFFF8F9FA),
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-                  boxShadow: [
-                    BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, -5))
-                  ],
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 20, offset: const Offset(0, -5))],
                 ),
                 child: ListView.builder(
+                  physics: const ClampingScrollPhysics(),
                   controller: scrollController,
-                  physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.only(top: 15, bottom: 100), // Padding for FAB
-                  itemCount: widget.route.stops.length + 1, 
+                  padding: const EdgeInsets.fromLTRB(24, 12, 24, 100),
+                  itemCount: widget.route.stops.length + 1,
                   itemBuilder: (context, index) {
-                    if (index == 0) return _buildHeader(primaryTeal);
-                    
-                    final stopIndex = index - 1;
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      child: _buildPlaceTimelineItem(
-                        widget.route.stops[stopIndex],
-                        isLast: stopIndex == widget.route.stops.length - 1,
-                      ),
-                    );
+                    if (index == 0) return _buildSheetHeader();
+                    return _buildModernTimelineItem(index - 1);
                   },
                 ),
               );
@@ -208,93 +142,86 @@ class _ItineraryDetailsPageState extends State<ItineraryDetailsPage> {
     );
   }
 
-  Widget _buildHeader(Color primaryTeal) {
-    final dateStr = DateFormat('EEEE, MMM dd').format(widget.route.startDate);
+  Widget _buildSheetHeader() {
     return Column(
       children: [
-        // Pull handle
-        Container(
-          width: 40, height: 5,
-          margin: const EdgeInsets.symmetric(vertical: 10),
-          decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(10)),
+        Container(width: 40, height: 4, margin: const EdgeInsets.only(bottom: 20), decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(10))),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text("Trip Plan", style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900)),
+            Row(
+              children: [
+                IconButton(onPressed: _navigateToAddStop, icon: const Icon(Icons.add_circle_outline, color: Colors.teal, size: 28)),
+                const SizedBox(width: 8),
+                TextButton.icon(
+                  onPressed: _exportToGoogleMaps,
+                  style: TextButton.styleFrom(
+                    backgroundColor: Colors.teal.shade700,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  icon: const Icon(Icons.directions_walk, size: 18),
+                  label: const Text("GO", style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ),
+          ],
         ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(24, 10, 24, 24), 
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween, 
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start, 
-                children: [
-                  const Text('Trip Schedule', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900)), 
-                  const SizedBox(height: 4), 
-                  Text(dateStr, style: TextStyle(fontSize: 14, color: primaryTeal, fontWeight: FontWeight.w700))
-                ]
-              ), 
-              CircleAvatar(
-                backgroundColor: Colors.teal.shade50,
-                child: Icon(Icons.calendar_month, color: Colors.teal.shade700, size: 20),
-              )
-            ]
-          ),
-        ),
+        const SizedBox(height: 20),
       ],
     );
   }
 
-  Widget _buildPlaceTimelineItem(TripStop stop, {required bool isLast}) {
-    final timeStr = DateFormat('jm').format(stop.scheduledTime);
+  Widget _buildModernTimelineItem(int index) {
+    final stop = widget.route.stops[index];
+    final isLast = index == widget.route.stops.length - 1;
 
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch, 
-        children: [
-          // TIMELINE LINE
-          Column(
-            children: [
-              Container(
-                width: 16, height: 16, 
-                decoration: BoxDecoration(
-                  color: Colors.teal.shade400, 
-                  border: Border.all(color: Colors.white, width: 3), 
-                  shape: BoxShape.circle,
-                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 4)]
-                )
-              ), 
-              if (!isLast) Expanded(child: Container(width: 2, color: Colors.teal.shade100))
-            ]
-          ), 
-          const SizedBox(width: 20), 
-          // TIMELINE CONTENT
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.only(bottom: 30.0), 
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start, 
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(stop.place.name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                      Text(timeStr, style: TextStyle(fontSize: 12, color: Colors.teal.shade700, fontWeight: FontWeight.w800)),
-                    ],
-                  ), 
-                  const SizedBox(height: 2),
-                  Text(stop.place.category.toUpperCase(), style: TextStyle(fontSize: 10, color: Colors.teal.shade300, fontWeight: FontWeight.bold, letterSpacing: 0.5)), 
-                  const SizedBox(height: 8), 
-                  // Display custom notes if they exist, otherwise show building detail
-                  Text(
-                    stop.customNotes != null && stop.customNotes!.isNotEmpty 
-                        ? stop.customNotes! 
-                        : stop.place.detail, 
-                    style: TextStyle(fontSize: 13, color: Colors.grey.shade600, height: 1.4)
-                  )
-                ]
-              )
-            )
-          )
-        ]
-      )
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Match the Map's Dot Style
+        Column(
+          children: [
+            Container(
+              width: 12, height: 12,
+              margin: const EdgeInsets.symmetric(vertical: 8),
+              decoration: const BoxDecoration(color: Colors.teal, shape: BoxShape.circle),
+            ),
+            if (!isLast) Container(width: 2, height: 80, color: Colors.teal.shade50),
+          ],
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 16),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.grey.shade100),
+              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4))],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Flexible(child: Text(stop.place.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15))),
+                    Text(DateFormat('h:mm a').format(stop.scheduledTime), style: TextStyle(color: Colors.grey.shade400, fontSize: 11)),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(stop.place.category.toUpperCase(), style: const TextStyle(color: Colors.teal, fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 0.8)),
+                const SizedBox(height: 10),
+                Text(stop.customNotes ?? stop.place.detail, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.grey.shade600, fontSize: 12, height: 1.4)),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
