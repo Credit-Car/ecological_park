@@ -20,13 +20,13 @@ class MainNavigation extends ConsumerStatefulWidget {
 class AvatarManager {
   // This maps the Database Key -> The Local Asset Path
   static const Map<String, String> avatars = {
-    'default': 'images/avatars/default.jpg',
-    'butterfly': 'images/avatars/butterfly.jpg',
-    'dandelion': 'images/avatars/dandelion.jpg',
-    'lake': 'images/avatars/lake.jpg',
-    'leaf': 'images/avatars/leaf.jpg',
-    'sun': 'images/avatars/sun.jpg',
-    'tree': 'images/avatars/tree.jpg',
+    'default': 'assets/images/avatars/default.jpg',
+    'butterfly': 'assets/images/avatars/butterfly.jpg',
+    'dandelion': 'assets/images/avatars/dandelion.jpg',
+    'lake': 'assets/images/avatars/lake.jpg',
+    'leaf': 'assets/images/avatars/leaf.jpg',
+    'sun': 'assets/images/avatars/sun.jpg',
+    'tree': 'assets/images/avatars/tree.jpg',
   };
 
   // Safe getter: Returns the default image if the key is missing/corrupted
