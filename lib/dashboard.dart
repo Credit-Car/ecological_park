@@ -137,23 +137,27 @@ Future<List<Places>> fetchPlaces() async {
             ),
             ClipRRect(
               borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
-              child: CachedNetworkImage(
-                imageUrl: data.imageUrl.split(',').first,
-                memCacheHeight: (180 * MediaQuery.of(context).devicePixelRatio).toInt(), // Optimize memory usage
-                height: 180,
-                width: double.infinity,
-                fit: BoxFit.cover,
-                placeholder: (context, url) => Container(
-                  height: 180,
-                  color: Colors.grey[200],
-                  child: const Center(child: CircularProgressIndicator()),
-                ),
-                errorWidget: (context, url, error) => Container(
-                  height: 180,
-                  color: Colors.grey[300],
-                  child: const Center(child: Icon(Icons.image_not_supported)), // Centered icon
-                ),
-              ),
+              child: data.imageUrl.startsWith('http') 
+                ? CachedNetworkImage(
+                    imageUrl: data.imageUrl.split(',').first,
+                    memCacheHeight: (180 * MediaQuery.of(context).devicePixelRatio).toInt(),
+                    height: 180,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    placeholder: (context, url) => Container(
+                      height: 180,
+                      color: Colors.grey[200],
+                      child: const Center(child: CircularProgressIndicator()),
+                    ),
+                    errorWidget: (context, url, error) => _buildErrorPlaceholder(),
+                  )
+                : Image.asset(
+                    data.imageUrl.split(',').first, // Loads from assets/images/
+                    height: 180,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => _buildErrorPlaceholder(),
+                  ),
             ),
           ],
         ),
@@ -161,6 +165,14 @@ Future<List<Places>> fetchPlaces() async {
     );
   }
 
+  Widget _buildErrorPlaceholder() {
+    return Container(
+      height: 180,
+      color: Colors.grey[300],
+      child: const Center(child: Icon(Icons.image_not_supported)),
+    );
+  }
+  
   @override
   Widget build(BuildContext context) {
     return Scaffold(
