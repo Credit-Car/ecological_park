@@ -75,6 +75,9 @@ dependencies:
     sdk: flutter
   flutter_markdown_plus: ^1.0.7
   http: ^1.6.0
+  
+dependency_overrides:
+  meta: ^1.15.0
 
 dev_dependencies:
   flutter_test:

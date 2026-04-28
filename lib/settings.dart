@@ -233,7 +233,7 @@ class ProfileMenuScreen extends ConsumerWidget {
                     },
                   ),
                   // _buildDivider(),
-                  // _buildMenuItem(icon: Icons.fingerprint, text: "Biometrics"),
+                  // _buildMenuItem(icon: Icons.fingerdebugPrint, text: "Biometrics"),
                   // _buildDivider(),
                   // _buildMenuItem(icon: Icons.shield_outlined, text: "Security Question"),
                 ],
@@ -599,7 +599,7 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
 
                     // Update password
                     await user.updatePassword(newPassword);
-                    print('password changed successfully');
+                    debugPrint('password changed successfully');
 
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -627,7 +627,7 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                       errorMessage = 'Please log in again before changing password';
                     }
 
-                    print('Error changing password: ${e.code} - ${e.message}');
+                    debugPrint('Error changing password: ${e.code} - ${e.message}');
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
@@ -637,7 +637,7 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                       );
                     }
                   } catch (e) {
-                    print('Error changing password: $e');
+                    debugPrint('Error changing password: $e');
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
@@ -710,7 +710,7 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                           );
                         }
                       } catch (e) {
-                        print('Error sending reset email: $e');
+                        debugPrint('Error sending reset email: $e');
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(

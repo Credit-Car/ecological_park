@@ -114,7 +114,7 @@ class _TripsPageState extends ConsumerState<TripsPage> {
               const SizedBox(height: 16),
 
               DropdownButtonFormField<String>(
-                value: selectedType,
+                initialValue: selectedType,
                 decoration: InputDecoration(
                   labelText: "Category",
                   filled: true,
@@ -229,7 +229,7 @@ class _TripsPageState extends ConsumerState<TripsPage> {
           decoration: BoxDecoration(
             color: isActive ? Colors.white : Colors.transparent,
             borderRadius: BorderRadius.circular(10),
-            boxShadow: isActive ? [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4)] : [],
+            boxShadow: isActive ? [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4)] : [],
           ),
           alignment: Alignment.center,
           child: Text(label, style: TextStyle(
@@ -297,7 +297,7 @@ class _TripsPageState extends ConsumerState<TripsPage> {
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: Colors.grey[100]!),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4))],
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4))],
         ),
         child: Column(
           children: [
@@ -334,8 +334,8 @@ class _TripsPageState extends ConsumerState<TripsPage> {
   Widget _buildPlaceholder(Color color) {
     return Container(
       height: 120, width: double.infinity,
-      color: color.withOpacity(0.05),
-      child: Icon(Icons.landscape_rounded, color: color.withOpacity(0.2), size: 32),
+      color: color.withValues(alpha: 0.05),
+      child: Icon(Icons.landscape_rounded, color: color.withValues(alpha: 0.2), size: 32),
     );
   }
 }

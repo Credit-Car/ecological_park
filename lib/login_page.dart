@@ -294,6 +294,14 @@ class LoginState extends ConsumerState<LoginPage> {
                       foregroundColor: Colors.white,
                       backgroundColor: Colors.teal,
                     ),
+                    // 1. Move onPressed here
+                    onPressed: _isLoading
+                        ? null
+                        : () async {
+                            await _handleLogin();
+                            // Remember to add: if (!mounted) return; here if you navigate next!
+                          },
+                    // 2. Put the child last
                     child: _isLoading
                         ? const SizedBox(
                             height: 20,
@@ -303,11 +311,6 @@ class LoginState extends ConsumerState<LoginPage> {
                             ),
                           )
                         : const Text('Log in ', style: TextStyle(fontSize: 20)),
-                    onPressed: _isLoading
-                        ? null
-                        : () async {
-                            await _handleLogin();
-                          },
                   ),
                 ),
               ),
@@ -420,7 +423,7 @@ class LoginState extends ConsumerState<LoginPage> {
     }
 
     try {
-     // print("Google Sign-In successful: ${account.email}");
+     // debugPrint("Google Sign-In successful: ${account.email}");
 
       // 3. Obtain the auth details (synchronous in v7)
       final GoogleSignInAuthentication googleAuth = account.authentication;
@@ -601,7 +604,7 @@ class LoginState extends ConsumerState<LoginPage> {
           );
         }
       } catch(e) {
-        print("Error fetching/creating user profile: $e");
+        debugPrint("Error fetching/creating user profile: $e");
         // Proceed anyway? Or show error?
       }
   }
@@ -695,7 +698,7 @@ class ForgotPwdState extends State<ForgotPwdPage> {
                     ),
                     child: Text('Continue', style: TextStyle(fontSize: 20)),
                     onPressed: () {
-                      print('Successfully log in ');
+                      debugPrint('Successfully log in ');
                     },
                   ),
                 ),

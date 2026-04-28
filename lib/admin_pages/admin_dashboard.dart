@@ -210,12 +210,15 @@ class _PlacesTabState extends State<PlacesTab> {
         ],
       ),
     );
+    if (!mounted) return;
 
     if (confirm == true) {
       try {
         await ExampleConnector.instance.deletePlace(placeId: placeId).execute();
+        if (!mounted) return;
         await _fetchPlaces();
       } catch (e) {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error deleting place: $e')),
         );
@@ -373,6 +376,7 @@ class _PlaceFormState extends State<PlaceForm> {
         .execute();
       }
 
+      if(!mounted) return;
       widget.onSave();
       Navigator.pop(context);
     } catch (e) {

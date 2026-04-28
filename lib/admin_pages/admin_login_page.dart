@@ -73,15 +73,15 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
     final password = _passwordController.text;
 
     try {
-      print("eemail: $email");
-      print("password: $password");
+      debugPrint("eemail: $email");
+      debugPrint("password: $password");
 
       final cred = await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: email,  
         password: password
       );
 
-      print('singed in: ${cred.user?.uid}');
+      debugPrint('singed in: ${cred.user?.uid}');
       
       if (cred.user != null) {
           final response = await ExampleConnector.instance.isAdmin(userId: cred.user!.uid).execute();

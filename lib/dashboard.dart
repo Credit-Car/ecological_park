@@ -254,9 +254,7 @@ class _DetailsPageState extends State<DetailsPage> {
 
   @override
   Widget build(BuildContext context) {
-    const primaryColor = Color(0xFF5D5FEF);
     final List<String> images = widget.destination.image.split(',');
-
     return Scaffold(
       backgroundColor: Colors.white,
       body: Stack(
@@ -305,7 +303,7 @@ class _DetailsPageState extends State<DetailsPage> {
                               shape: BoxShape.circle,
                               color: _currentPage == index 
                                   ? Colors.white 
-                                  : Colors.white.withOpacity(0.5),
+                                  : Colors.white.withValues(alpha: 0.5),
                             ),
                           );
                         }),
@@ -377,6 +375,7 @@ class _DetailsPageState extends State<DetailsPage> {
                             // actually it is in services.dart. 
                             WidgetsBinding.instance.addPostFrameCallback((_) {
                               Clipboard.setData(ClipboardData(text: widget.destination.location)).then((_) {
+                                if (!context.mounted) return;
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
                                     content: Text('Location copied to clipboard'),
@@ -494,24 +493,24 @@ class _DetailsPageState extends State<DetailsPage> {
   }
 
 // Reviewer
-  Widget _buildAvatarStack() {
-    return SizedBox(
-      width: 70, height: 30,
-      child: Stack(
-        children: List.generate(3, (index) {
-          return Positioned(
-            left: index * 15.0,
-            child: CircleAvatar(
-              radius: 15,
-              backgroundColor: Colors.white,
-              child: CircleAvatar(
-                radius: 13,
-                backgroundImage: NetworkImage('https://www.shutterstock.com/image-photo/smiling-african-american-millennial-businessman-600nw-1437938108.jpg'),
-              ),
-            ),
-          );
-        }),
-      ),
-    );
-  }
+//   Widget _buildAvatarStack() {
+//     return SizedBox(
+//       width: 70, height: 30,
+//       child: Stack(
+//         children: List.generate(3, (index) {
+//           return Positioned(
+//             left: index * 15.0,
+//             child: CircleAvatar(
+//               radius: 15,
+//               backgroundColor: Colors.white,
+//               child: CircleAvatar(
+//                 radius: 13,
+//                 backgroundImage: NetworkImage('https://www.shutterstock.com/image-photo/smiling-african-american-millennial-businessman-600nw-1437938108.jpg'),
+//               ),
+//             ),
+//           );
+//         }),
+//       ),
+//     );
+//   }
 }
