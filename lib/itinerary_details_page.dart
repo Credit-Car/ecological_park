@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart'; 
+import 'package:latlong2/latlong.dart' as ll;
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:intl/intl.dart';
 import 'models/trip.dart';
-import 'add_itinerary_item_page.dart';
-import 'mockdata.dart';
 
 class ItineraryDetailsPage extends StatefulWidget {
   final Trip route;
@@ -15,157 +16,171 @@ class ItineraryDetailsPage extends StatefulWidget {
 
 class _ItineraryDetailsPageState extends State<ItineraryDetailsPage> {
   final DraggableScrollableController _sheetController = DraggableScrollableController();
+  Map<int, String> _legDistances = {}; 
+  bool _isLoadingData = true;
 
-String _getStaticMapUrl() {
-  if (widget.route.stops.isEmpty) return "";
-
-  //const String navyColor = "0x000080";
-  const String apiKey = 'AIzaSyA311vNSU51Bmatl-h9OPEQNT-isyeoLiw';
-
-  String path = "path=color:red|weight:5";
-  for (var stop in widget.route.stops) {
-    path += "|${stop.place.lat},${stop.place.lng}";
-  }
-
-  String markers = "markers=color:red|size:small";
-  for (var stop in widget.route.stops) {
-    markers += "|${stop.place.lat},${stop.place.lng}";
+  @override
+  void initState() {
+    super.initState();
+    _fetchGoogleRouteData();
   }
   
-  return "https://maps.googleapis.com/maps/api/staticmap?"
-      "size=800x1200&"
-      "scale=2&" // High-DPI for mobile web
-      "maptype=roadmap&"
-      "$path&"
-      "$markers&"
-      "key=$apiKey";
-}
+  Future<void> _fetchGoogleRouteData() async {
+    if (widget.route.stops.length < 2) {
+      setState(() => _isLoadingData = false);
+      return;
+    }
 
-  Future<void> _exportToGoogleMaps() async {
-    if (widget.route.stops.isEmpty) return;
-
-    final origin = widget.route.stops.first.place;
-    final destination = widget.route.stops.last.place;
+    const String apiKey = 'AIzaSyA311vNSU51Bmatl-h9OPEQNT-isyeoLiw';
+    final origin = "${widget.route.stops.first.place.lat},${widget.route.stops.first.place.lng}";
+    final destination = "${widget.route.stops.last.place.lat},${widget.route.stops.last.place.lng}";
     
     String waypoints = "";
     if (widget.route.stops.length > 2) {
-      waypoints = "&waypoints=" + widget.route.stops
+      final pts = widget.route.stops
           .sublist(1, widget.route.stops.length - 1)
-          .map((s) => "${s.place.lat},${s.place.lng}")
-          .join('|');
+          .map((s) => "${s.place.lat},${s.place.lng}").join('|');
+      waypoints = "&waypoints=$pts";
     }
+
+    final url = "https://maps.googleapis.com/maps/api/directions/json"
+        "?origin=$origin&destination=$destination$waypoints&mode=walking&key=$apiKey";
+
+    try {
+      final response = await http.get(Uri.parse(url));
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['status'] == 'OK') {
+          final legs = data['routes'][0]['legs'] as List;
+          for (int i = 0; i < legs.length; i++) {
+            _legDistances[i] = legs[i]['distance']['text'];
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint("API Error: $e");
+    } finally {
+      if (mounted) setState(() => _isLoadingData = false);
+    }
+  }
+
+  /// Launch the actual Google Maps app for live navigation
+  Future<void> _exportToGoogleMaps() async {
+    final origin = widget.route.stops.first.place;
+    final destination = widget.route.stops.last.place;
+    final pts = widget.route.stops.sublist(1, widget.route.stops.length - 1)
+        .map((s) => "${s.place.lat},${s.place.lng}").join('|');
 
     final url = 'https://www.google.com/maps/dir/?api=1'
         '&origin=${origin.lat},${origin.lng}'
         '&destination=${destination.lat},${destination.lng}'
-        '$waypoints'
+        '&waypoints=$pts'
         '&travelmode=walking';
 
     final uri = Uri.parse(url);
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
-  }
+}
 
-  Future<void> _navigateToAddStop() async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => AddTripStopPage(
-          trip: widget.route,
-          availablePlaces: MockData.availablePlaces,
-        ),
+@override
+Widget build(BuildContext context) {
+  return Scaffold(
+    extendBodyBehindAppBar: true,
+    appBar: AppBar(
+      backgroundColor: Colors.white.withOpacity(0.8),
+      elevation: 0,
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back_ios_new, size: 18, color: Colors.black),
+        onPressed: () => Navigator.pop(context),
       ),
-    );
-    if (result == true) setState(() {});
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        backgroundColor: Colors.white.withOpacity(0.85),
-        elevation: 0,
-        surfaceTintColor: Colors.transparent,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, size: 18, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(widget.route.name, 
-          style: const TextStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.w900)),
-      ),
-      body: Stack(
-        children: [
-          // MINIMALIST MAP BACKGROUND
-          Positioned.fill(
-            child: Image.network(
-              _getStaticMapUrl(),
-              fit: BoxFit.cover,
-              loadingBuilder: (context, child, loadingProgress) {
-                if (loadingProgress == null) return child;
-                return Container(color: Colors.white, child: const Center(child: CircularProgressIndicator(color: Colors.teal)));
-              },
-              errorBuilder: (context, e, s) => Container(color: Colors.teal.shade50, child: const Icon(Icons.map_outlined, size: 48, color: Colors.teal)),
-            ),
+      title: Text(widget.route.name, 
+        style: const TextStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.bold)),
+    ),
+    body: Stack(
+      children: [
+        FlutterMap(
+          options: MapOptions(
+            initialCenter: () {
+              double avgLat = widget.route.stops.map((s) => s.place.lat).reduce((a, b) => a + b) / widget.route.stops.length;
+              double avgLng = widget.route.stops.map((s) => s.place.lng).reduce((a, b) => a + b) / widget.route.stops.length;
+              return ll.LatLng(avgLat, avgLng);
+            }(),
+            initialZoom: 18.0,
+            minZoom: 14.0,
+            maxZoom: 20.0,
           ),
+          children: [
+            TileLayer(
+              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+              userAgentPackageName: 'com.ndhu.travelapp',
+            ),
+            PolylineLayer(
+              polylines: [
+                Polyline(
+                  points: widget.route.stops.map((s) => ll.LatLng(s.place.lat, s.place.lng)).toList(),
+                  color: Colors.red.withOpacity(0.7),
+                  strokeWidth: 4.0,
+                ),
+              ],
+            ),
+            MarkerLayer(
+              markers: widget.route.stops.map((stop) {
+                return Marker(
+                  point: ll.LatLng(stop.place.lat, stop.place.lng),
+                  width: 37, 
+                  height: 47,
+                  child: Image.asset('assets/images/markers/marker.png'), 
+                );
+              }).toList(),
+            ),
+          ],
+        ),
+        _buildDraggableSheet(),
+      ],
+    ),
+  );
+}
 
-          // DRAGGABLE ITINERARY
-          DraggableScrollableSheet(
-            controller: _sheetController,
-            initialChildSize: 0.4,
-            minChildSize: 0.15,
-            maxChildSize: 1.0,
-            snap: true,
-            builder: (context, scrollController) {
-              return Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 20, offset: const Offset(0, -5))],
-                ),
-                child: ListView.builder(
-                  physics: const ClampingScrollPhysics(),
-                  controller: scrollController,
-                  padding: const EdgeInsets.fromLTRB(24, 12, 24, 100),
-                  itemCount: widget.route.stops.length + 1,
-                  itemBuilder: (context, index) {
-                    if (index == 0) return _buildSheetHeader();
-                    return _buildModernTimelineItem(index - 1);
-                  },
-                ),
-              );
+  Widget _buildDraggableSheet() {
+    return DraggableScrollableSheet(
+      controller: _sheetController,
+      initialChildSize: 0.4,
+      minChildSize: 0.2,
+      maxChildSize: 0.95,
+      builder: (context, scrollController) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+          ),
+          child: ListView.builder(
+            controller: scrollController,
+            padding: const EdgeInsets.all(24),
+            itemCount: widget.route.stops.length + 1,
+            itemBuilder: (context, index) {
+              if (index == 0) return _buildHeader();
+              return _buildTimelineItem(index - 1);
             },
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
-  Widget _buildSheetHeader() {
+  Widget _buildHeader() {
     return Column(
       children: [
-        Container(width: 40, height: 4, margin: const EdgeInsets.only(bottom: 20), decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(10))),
+        Container(width: 40, height: 4, margin: const EdgeInsets.only(bottom: 20), decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(10))),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text("Trip Plan", style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900)),
-            Row(
-              children: [
-                IconButton(onPressed: _navigateToAddStop, icon: const Icon(Icons.add_circle_outline, color: Colors.teal, size: 28)),
-                const SizedBox(width: 8),
-                TextButton.icon(
-                  onPressed: _exportToGoogleMaps,
-                  style: TextButton.styleFrom(
-                    backgroundColor: Colors.teal.shade700,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  icon: const Icon(Icons.directions_walk, size: 18),
-                  label: const Text("GO", style: TextStyle(fontWeight: FontWeight.bold)),
-                ),
-              ],
+            const Text("Your Journey", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+            ElevatedButton.icon(
+              onPressed: _exportToGoogleMaps,
+              icon: const Icon(Icons.directions_walk, size: 18),
+              label: const Text("GO"),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.teal, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
             ),
           ],
         ),
@@ -174,51 +189,67 @@ String _getStaticMapUrl() {
     );
   }
 
-  Widget _buildModernTimelineItem(int index) {
+  Widget _buildTimelineItem(int index) {
     final stop = widget.route.stops[index];
     final isLast = index == widget.route.stops.length - 1;
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Match the Map's Dot Style
         Column(
           children: [
-            Container(
-              width: 12, height: 12,
-              margin: const EdgeInsets.symmetric(vertical: 8),
-              decoration: const BoxDecoration(color: Colors.teal, shape: BoxShape.circle),
-            ),
-            if (!isLast) Container(width: 2, height: 80, color: Colors.teal.shade50),
+            const Icon(Icons.circle, color: Colors.teal, size: 12),
+            if (!isLast) ...[
+              Container(width: 2, height: 40, color: Colors.teal.withOpacity(0.2)),
+              // Display the Google-fetched distance here!
+              if (!_isLoadingData && _legDistances.containsKey(index))
+                RotatedBox(quarterTurns: 1, child: Text(" ${_legDistances[index]} ", style: const TextStyle(fontSize: 9, color: Colors.teal, fontWeight: FontWeight.bold))),
+              Container(width: 2, height: 40, color: Colors.teal.withOpacity(0.2)),
+            ]
           ],
         ),
         const SizedBox(width: 16),
         Expanded(
-          child: Container(
-            margin: const EdgeInsets.only(bottom: 16),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.grey.shade100),
-              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4))],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Flexible(child: Text(stop.place.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15))),
-                    Text(DateFormat('h:mm a').format(stop.scheduledTime), style: TextStyle(color: Colors.grey.shade400, fontSize: 11)),
-                  ],
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                stop.place.name,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold, 
+                  fontSize: 16,
+                  letterSpacing: -0.5,
                 ),
-                const SizedBox(height: 6),
-                Text(stop.place.category.toUpperCase(), style: const TextStyle(color: Colors.teal, fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 0.8)),
-                const SizedBox(height: 10),
-                Text(stop.customNotes ?? stop.place.detail, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.grey.shade600, fontSize: 12, height: 1.4)),
-              ],
-            ),
+              ),
+              const SizedBox(height: 4),// Small gap between name and metadata
+              // Row for Icon and Time
+              Row(
+                children: [
+                  Icon(Icons.access_time_rounded, size: 14, color: Colors.grey[600]),
+                  const SizedBox(width: 4),
+                  Text(
+                    "${stop.scheduledTime.hour.toString().padLeft(2, '0')}:${stop.scheduledTime.minute.toString().padLeft(2, '0')}",
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(width: 12), // Gap before category
+                  
+                  // Category Badge/Text
+                  Text(
+                    stop.place.category,
+                    style: TextStyle(
+                      color: Colors.grey[400], 
+                      fontSize: 12,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+            ],
           ),
         ),
       ],

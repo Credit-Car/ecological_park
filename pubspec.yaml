@@ -61,7 +61,7 @@ dependencies:
   # searchable_listview: ^2.19.3
   hive_ce: ^2.15.1
   flutter_riverpod: ^2.6.1
-  firebase_core: ^4.4.0
+  firebase_core: ^4.7.0
   cloud_firestore: ^6.1.2
   firebase_data_connect: ^0.2.1+2
   focused_menu: ^1.0.5
@@ -73,6 +73,8 @@ dependencies:
   shared_preferences: ^2.5.4
   flutter_web_plugins:
     sdk: flutter
+  flutter_markdown_plus: ^1.0.7
+  http: ^1.6.0
 
 dev_dependencies:
   flutter_test:

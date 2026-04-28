@@ -153,9 +153,11 @@ class ExampleConnector {
 
   ExampleConnector({required this.dataConnect});
   static ExampleConnector get instance {
+    
     return ExampleConnector(
         dataConnect: FirebaseDataConnect.instanceFor(
             connectorConfig: connectorConfig,
+            
             sdkType: CallerSDKType.generated));
   }
 

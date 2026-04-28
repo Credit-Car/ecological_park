@@ -63,7 +63,7 @@ extend type Place {
   """
   A generated field that is used for caching results in SDKs.
   """
-  _id: ID! @fdc_generated(from: "Place.placeId", purpose: GLOBAL_ID)
+  _id: ID! @fdc_generated(from: "Place.placeId", purpose: ENTITY_ID)
 }
 extend type Route {
   """
@@ -130,7 +130,7 @@ extend type Route {
   """
   A generated field that is used for caching results in SDKs.
   """
-  _id: ID! @fdc_generated(from: "Route.routeId", purpose: GLOBAL_ID)
+  _id: ID! @fdc_generated(from: "Route.routeId", purpose: ENTITY_ID)
 }
 extend type User {
   """
@@ -232,5 +232,5 @@ extend type User {
   """
   A generated field that is used for caching results in SDKs.
   """
-  _id: ID! @fdc_generated(from: "User.userId", purpose: GLOBAL_ID)
+  _id: ID! @fdc_generated(from: "User.userId", purpose: ENTITY_ID)
 }

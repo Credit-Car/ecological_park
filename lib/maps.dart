@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:flutter_map/flutter_map.dart'; // New Import
+import 'package:latlong2/latlong.dart';      // New Import
 import 'package:url_launcher/url_launcher.dart';
 import 'package:pointer_interceptor/pointer_interceptor.dart';
 import 'models/places.dart';
@@ -13,53 +14,28 @@ class CampusMapViewerPage extends StatefulWidget {
 }
 
 class _CampusMapViewerPageState extends State<CampusMapViewerPage> {
-
   final TextEditingController _searchController = TextEditingController();
-  GoogleMapController? _mapController;
+  final MapController _mapController = MapController();
+  
   Places? _selectedPlace;
   List<Places> _searchResults = [];
   String _selectedCategory = "All";
 
   final List<Places> _allPlaces = MockData.availablePlaces;
-  final GlobalKey _mapKey = GlobalKey(debugLabel: 'mataian_map_key');
+  
+  final Map<String, String> _markerPaths = {
+    'p001': 'assets/images/markers/info.png',
+    'p002': 'assets/images/markers/firefly.png',
+    'p003': 'assets/images/markers/pond.png',
+    'p004': 'assets/images/markers/bridge.png',
+    'p005': 'assets/images/markers/fishing.png',
+    'p006': 'assets/images/markers/picnic-table.png',
+  };
 
-  Map<String, BitmapDescriptor> _markerIcons = {};
-  //Map<String, BitmapDescriptor> _customIcons = {};
-
-  // Coherent Teal for the AI Guide
   final Color guideTeal = const Color(0xFF14B8A6);
 
-  final LatLngBounds _mataianBounds = LatLngBounds(
-    southwest: const LatLng(23.6545, 121.4065),
-    northeast: const LatLng(23.6605, 121.4125),
-  );
-  
-@override
-void initState() {
-  super.initState();
-  _loadIcons();
-}
-
-Future<void> _loadIcons() async {
-  final ids = ['p001', 'p002', 'p003', 'p004', 'p005', 'p006'];
-  final paths = [
-    'assets/images/markers/info.png',
-    'assets/images/markers/firefly.png',
-    'assets/images/markers/pond.png',
-    'assets/images/markers/bridge.png',
-    'assets/images/markers/fishing.png',
-    'assets/images/markers/picnic-table.png',
-  ];
-
-  for (int i = 0; i < ids.length; i++) {
-    // Note: Using BitmapDescriptor.asset for modern Flutter Google Maps versions
-    _markerIcons[ids[i]] = await BitmapDescriptor.asset(
-      const ImageConfiguration(size: Size(30, 30)), // Adjust size as needed
-      paths[i],
-    );
-  }
-  if (mounted) setState(() {});
-}
+  // Boundary coordinates
+  final LatLng _initialCenter = const LatLng(23.65775, 121.40966);
 
   void _onPlaceTap(Places place) {
     setState(() {
@@ -68,19 +44,9 @@ Future<void> _loadIcons() async {
       _searchController.clear();
       FocusScope.of(context).unfocus();
     });
-    _mapController?.animateCamera(
-      CameraUpdate.newLatLngZoom(LatLng(place.lat, place.lng), 17.5),
-    );
+    
+    _mapController.move(LatLng(place.lat, place.lng), 17.5);
   }
-
-  // double _getMarkerHue(String category) {
-  //   switch (category) {
-  //     case 'Wildlife': return BitmapDescriptor.hueGreen;
-  //     case 'Culture': return BitmapDescriptor.hueOrange;
-  //     case 'Scenic Spot': return BitmapDescriptor.hueAzure;
-  //     default: return BitmapDescriptor.hueRed; // Facilities or others
-  //   }
-  // }
 
   void _openChatForPlace(Places place) {
     showModalBottomSheet(
@@ -114,12 +80,13 @@ Future<void> _loadIcons() async {
       ),
     );
   }
-  
-  
-Future<void> _openGoogleMaps(Places place) async {
+
+  Future<void> _openGoogleMaps(Places place) async {
+    // Corrected Google Maps URL format
     final url = 'https://www.google.com/maps/search/?api=1&query=${place.lat},${place.lng}';
-    if (await canLaunchUrl(Uri.parse(url))) {
-      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
   }
 
@@ -128,15 +95,24 @@ Future<void> _openGoogleMaps(Places place) async {
     return Scaffold(
       body: Stack(
         children: [
-          GoogleMap(
-            key: _mapKey,
-            initialCameraPosition: const CameraPosition(target: LatLng(23.65775, 121.40966), zoom: 17),
-            cameraTargetBounds: CameraTargetBounds(_mataianBounds),
-            onMapCreated: (controller) => _mapController = controller,
-            markers: _buildMarkers(),
-            onTap: (_) => setState(() => _selectedPlace = null),
-            zoomControlsEnabled: false,
-            myLocationButtonEnabled: false,
+          FlutterMap(
+            mapController: _mapController,
+            options: MapOptions(
+              initialCenter: _initialCenter,
+              initialZoom: 17.8,
+              minZoom: 17.3,
+              maxZoom: 20.0,
+              onTap: (_, __) => setState(() => _selectedPlace = null),
+            ),
+            children: [
+              TileLayer(
+                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                userAgentPackageName: 'com.example.app',
+              ),
+              MarkerLayer(
+                markers: _buildMarkers(),
+              ),
+            ],
           ),
 
           // TOP UI
@@ -166,26 +142,26 @@ Future<void> _openGoogleMaps(Places place) async {
     );
   }
 
-Set<Marker> _buildMarkers() {
-  // Return empty set if icons aren't loaded yet to prevent the "Default Red Pin" flash
-  if (_markerIcons.isEmpty) return {};
-
-  return _allPlaces
-      .where((p) => _selectedCategory == "All" || p.category == _selectedCategory)
-      .map((place) {
-    
-    final bool isSelected = _selectedPlace?.id == place.id;
-    
-    return Marker(
-      markerId: MarkerId(place.id),
-      position: LatLng(place.lat, place.lng),
-      // If custom icon exists, use it; otherwise, use a unique color default
-      icon: _markerIcons[place.id] ?? BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
-      anchor: const Offset(0.5, 0.5),
-      onTap: () => _onPlaceTap(place),
-    );
-  }).toSet();
-}
+  List<Marker> _buildMarkers() {
+    return _allPlaces
+        .where((p) => _selectedCategory == "All" || p.category == _selectedCategory)
+        .map((place) {
+      
+      final String? assetPath = _markerPaths[place.id];
+      
+      return Marker(
+        point: LatLng(place.lat, place.lng),
+        width: 30,
+        height: 30,
+        child: GestureDetector(
+          onTap: () => _onPlaceTap(place),
+          child: assetPath != null 
+            ? Image.asset(assetPath) 
+            : Icon(Icons.location_on, color: guideTeal, size: 40),
+        ),
+      );
+    }).toList();
+  }
 
 Widget _buildModernInfoCard() {
     return Container(
