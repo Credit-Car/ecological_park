@@ -4,27 +4,7 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:travel_app/dataconnect_generated/generated.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'mockdata.dart';
-
-// Destination Model
-class Destination {
-  final String name;
-  final String category;
-  final String image;
-  final String description;
-  final String location;
-  final double rating;
-  final String price;
-
-  Destination({
-    required this.name,
-    required this.category,
-    required this.image,
-    required this.description,
-    required this.location,
-    required this.rating,
-    required this.price,
-  });
-}
+import '../models/places.dart';
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
@@ -34,48 +14,38 @@ class Dashboard extends StatefulWidget {
 }
 
 class _DashboardState extends State<Dashboard> {
+  List<Places> filteredDestinations = [];
+  List<Places> _allDestinations = []; 
+  late Future<List<Places>> allDestinationsFuture;
 
-  Future<List<Destination>> fetchPlaces() async {
-  try {
-    final res = await ExampleConnector.instance.listPlaces().execute();
-    
-    if (res.data.places.isEmpty) {
-      return _getMockFallback();
+Future<List<Places>> fetchPlaces() async {
+    try {
+      final res = await ExampleConnector.instance.listPlaces().execute();
+      
+      if (res.data.places.isEmpty) {
+        return MockData.availablePlaces;
+      }
+
+      // Map Backend data to your Places model
+      return res.data.places.map((e) => Places(
+        id: e.placeId,
+        name: e.name,
+        category: 'Explore', 
+        imageUrl: (e.images != null && e.images!.isNotEmpty) 
+            ? e.images!.first 
+            : 'https://via.placeholder.com/150',
+        detail: e.description ?? '',
+        lat: double.tryParse(e.coordinates.split(',').first) ?? 0.0,
+        lng: double.tryParse(e.coordinates.split(',').last) ?? 0.0,
+      )).toList();
+
+    } catch (e) {
+      debugPrint("Backend unreachable, using MockData: $e");
+      return MockData.availablePlaces;
     }
-
-    return res.data.places.map((e) => Destination(
-      name: e.name,
-      category: 'Explore', 
-      image: (e.images != null && e.images!.isNotEmpty) ? e.images!.first : 'https://via.placeholder.com/150',
-      description: e.description ?? '',
-      location: e.coordinates,
-      rating: 4.5,
-      price: 'Free',
-    )).toList();
-
-  } catch (e) {
-    debugPrint("Backend unreachable, using Matai’an Mock Data: $e");
-    return _getMockFallback();
   }
-}
-
-List<Destination> _getMockFallback() {
-  return MockData.availablePlaces.map((p) => Destination(
-    name: p.name,
-    category: p.category,
-    image: p.imageUrl,
-    description: p.detail,
-    location: "Guangfu, Hualien",
-    rating: 4.8,
-    price: p.category == 'Culture' ? '\$250' : 'Free',
-  )).toList();
-}
-
 
   final TextEditingController _searchController = TextEditingController();
-  List<Destination> filteredDestinations = [];
-  List<Destination> _allDestinations = []; // Store all destinations for search
-  late Future<List<Destination>> allDestinationsFuture;
 
   @override
   void initState() {
@@ -144,7 +114,7 @@ List<Destination> _getMockFallback() {
     });
   }
 
-  Widget buildDestinationCard(Destination data) {
+  Widget buildDestinationCard(Places data) {
     return GestureDetector(
       onTap: () {
         Navigator.push(
@@ -168,7 +138,7 @@ List<Destination> _getMockFallback() {
             ClipRRect(
               borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
               child: CachedNetworkImage(
-                imageUrl: data.image.split(',').first,
+                imageUrl: data.imageUrl.split(',').first,
                 memCacheHeight: (180 * MediaQuery.of(context).devicePixelRatio).toInt(), // Optimize memory usage
                 height: 180,
                 width: double.infinity,
@@ -242,7 +212,7 @@ List<Destination> _getMockFallback() {
 
 
 class DetailsPage extends StatefulWidget {
-  final Destination destination;
+  final Places destination; // Changed from Destination
   const DetailsPage({super.key, required this.destination});
 
   @override
@@ -251,10 +221,18 @@ class DetailsPage extends StatefulWidget {
 
 class _DetailsPageState extends State<DetailsPage> {
   int _currentPage = 0;
+  String get placePrice {
+    return widget.destination.category == 'Culture'
+        ? '\$250'
+        : 'Free';
+  }
 
+  String get placeLocation {
+    return "Guangfu, Hualien";
+  }
   @override
   Widget build(BuildContext context) {
-    final List<String> images = widget.destination.image.split(',');
+    final List<String> images = widget.destination.imageUrl.split(',');
     return Scaffold(
       backgroundColor: Colors.white,
       body: Stack(
@@ -274,19 +252,31 @@ class _DetailsPageState extends State<DetailsPage> {
                       });
                     },
                     itemBuilder: (context, index) {
-                      return CachedNetworkImage(
-                        imageUrl: images[index],
-                        fit: BoxFit.cover,
-                        placeholder: (context, url) => Container(
-                          color: Colors.grey[200],
-                          child: const Center(child: CircularProgressIndicator()),
-                        ),
-                        errorWidget: (context, url, error) => Container(
-                          color: Colors.grey[300],
-                          child: const Center(child: Icon(Icons.image_not_supported)),
-                        ),
-                      );
-                    },
+                      if (images[index].startsWith('assets/')) {
+                        return Image.asset(
+                          images[index],
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                        );
+                      } else {
+                        return CachedNetworkImage(
+                          imageUrl: images[index],
+                          fit: BoxFit.cover,
+                          placeholder: (context, url) => Container(
+                            color: Colors.grey[200],
+                            child: const Center(
+                              child: CircularProgressIndicator(),
+                            ),
+                          ),
+                          errorWidget: (context, url, error) => Container(
+                            color: Colors.grey[300],
+                            child: const Center(
+                              child: Icon(Icons.image_not_supported),
+                            ),
+                          ),
+                        );
+                      }
+},
                   ),
                   if (images.length > 1)
                     Positioned(
@@ -353,7 +343,7 @@ class _DetailsPageState extends State<DetailsPage> {
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
-                            Text(widget.destination.price, style: const TextStyle(fontSize: 22, color: Colors.teal, fontWeight: FontWeight.bold)),
+                            Text(placePrice, style: const TextStyle(fontSize: 22, color: Colors.teal, fontWeight: FontWeight.bold)),
                             //const Text("/person", style: TextStyle(color: Colors.grey, fontSize: 12)),
                           ],
                         ),
@@ -363,7 +353,7 @@ class _DetailsPageState extends State<DetailsPage> {
                     Row(
                       children: [
                         const Icon(Icons.location_on, color: Colors.blueAccent, size: 18),
-                        Text(' ${widget.destination.location}', style: const TextStyle(color: Colors.grey)),
+                        Text(placeLocation, style: const TextStyle(color: Colors.grey)),
 
                         Spacer(),
 
@@ -374,7 +364,7 @@ class _DetailsPageState extends State<DetailsPage> {
                             // but usually available via material.dart -> services.dart
                             // actually it is in services.dart. 
                             WidgetsBinding.instance.addPostFrameCallback((_) {
-                              Clipboard.setData(ClipboardData(text: widget.destination.location)).then((_) {
+                              Clipboard.setData(ClipboardData(text:placeLocation)).then((_) {
                                 if (!context.mounted) return;
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
@@ -441,7 +431,7 @@ class _DetailsPageState extends State<DetailsPage> {
                     // display the decription in markdown format with line breaks and paragraphs
                     
                     MarkdownBody(
-                      data: widget.destination.description,
+                      data: widget.destination.detail,
                       styleSheet: MarkdownStyleSheet(
                         p: const TextStyle(color: Colors.black54, height: 1.5),
                       ),
