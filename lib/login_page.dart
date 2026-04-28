@@ -420,7 +420,7 @@ class LoginState extends ConsumerState<LoginPage> {
     }
 
     try {
-      print("Google Sign-In successful: ${account.email}");
+     // print("Google Sign-In successful: ${account.email}");
 
       // 3. Obtain the auth details (synchronous in v7)
       final GoogleSignInAuthentication googleAuth = account.authentication;

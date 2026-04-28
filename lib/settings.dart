@@ -3,10 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:travel_app/main.dart';
 import 'package:travel_app/providers/current_user.dart';
 import 'main_navigation.dart';
-import 'package:universal_html/html.dart' as html;
+//import 'package:universal_html/html.dart' as html;
 import 'dataconnect_generated/generated.dart';
-import 'package:focused_menu/focused_menu.dart';
-import 'package:focused_menu/modals.dart';
+// import 'package:focused_menu/focused_menu.dart';
+// import 'package:focused_menu/modals.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 // Tracks the last time a password reset email was sent
@@ -271,7 +271,7 @@ class ProfileMenuScreen extends ConsumerWidget {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -483,7 +483,7 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final currentUser = ref.watch(currentUserProvider);
+  //  final currentUser = ref.watch(currentUserProvider);
     return Scaffold(
       appBar: AppBar(
         title: const Text("Change Password"),

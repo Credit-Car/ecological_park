@@ -31,41 +31,51 @@ class _AddTripStopPageState extends State<AddTripStopPage> {
     _selectedDateTime = widget.trip.startDate;
   }
 
-  void _pickDateTime() async {
-    // Restrict the date picker to stay within the Trip's start and end dates
-    final DateTime? pickedDate = await showDatePicker(
-      context: context,
-      initialDate: widget.trip.startDate,
-      firstDate: widget.trip.startDate,
-      lastDate: widget.trip.endDate,
-      builder: (context, child) => Theme(
-        data: Theme.of(context).copyWith(
-          colorScheme: const ColorScheme.light(
-            primary: Colors.teal,
-            onPrimary: Colors.white,
-            onSurface: Colors.black87,
-          ),
+void _pickDateTime() async {
+  // 1. Pick the Date
+  final DateTime? pickedDate = await showDatePicker(
+    context: context,
+    initialDate: widget.trip.startDate,
+    firstDate: widget.trip.startDate,
+    lastDate: widget.trip.endDate,
+    builder: (context, child) => Theme(
+      data: Theme.of(context).copyWith(
+        colorScheme: const ColorScheme.light(
+          primary: Colors.teal,
+          onPrimary: Colors.white,
+          onSurface: Colors.black87,
         ),
-        child: child!,
       ),
+      child: child!,
+    ),
+  );
+
+  // Check if the user closed the page while the DatePicker was open
+  if (!mounted) return; 
+
+  if (pickedDate != null) {
+    // 2. Pick the Time
+    final TimeOfDay? pickedTime = await showTimePicker(
+      context: context,
+      initialTime: const TimeOfDay(hour: 12, minute: 0),
     );
 
-    if (pickedDate != null) {
-      final TimeOfDay? pickedTime = await showTimePicker(
-        context: context,
-        initialTime: const TimeOfDay(hour: 12, minute: 0),
-      );
+    // Check again before using context or calling setState
+    if (!mounted) return;
 
-      if (pickedTime != null) {
-        setState(() {
-          _selectedDateTime = DateTime(
-            pickedDate.year, pickedDate.month, pickedDate.day,
-            pickedTime.hour, pickedTime.minute,
-          );
-        });
-      }
+    if (pickedTime != null) {
+      setState(() {
+        _selectedDateTime = DateTime(
+          pickedDate.year,
+          pickedDate.month,
+          pickedDate.day,
+          pickedTime.hour,
+          pickedTime.minute,
+        );
+      });
     }
   }
+}
 
   void _saveStop() {
     if (_formKey.currentState!.validate() && _selectedPlace != null && _selectedDateTime != null) {
@@ -127,7 +137,7 @@ class _AddTripStopPageState extends State<AddTripStopPage> {
                 child: DropdownButtonFormField<Places>(
                   decoration: const InputDecoration(border: InputBorder.none),
                   hint: const Text("Where are we going?"),
-                  value: _selectedPlace,
+                  initialValue: _selectedPlace,
                   icon: const Icon(Icons.location_on_rounded, color: primaryTeal),
                   items: widget.availablePlaces.map((place) {
                     return DropdownMenuItem(

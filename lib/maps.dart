@@ -102,7 +102,7 @@ class _CampusMapViewerPageState extends State<CampusMapViewerPage> {
               initialZoom: 17.8,
               minZoom: 17.3,
               maxZoom: 20.0,
-              onTap: (_, __) => setState(() => _selectedPlace = null),
+              onTap: (_, _) => setState(() => _selectedPlace = null),
             ),
             children: [
               TileLayer(
@@ -171,7 +171,7 @@ Widget _buildModernInfoCard() {
         borderRadius: BorderRadius.circular(28),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.12), 
+            color: Colors.black.withValues(alpha: 0.12), 
             blurRadius: 25, 
             offset: const Offset(0, 8)
           )
@@ -209,7 +209,7 @@ Widget _buildModernInfoCard() {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
-                        color: guideTeal.withOpacity(0.1),
+                        color: guideTeal.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
@@ -274,7 +274,7 @@ Widget _buildModernInfoCard() {
                     label: const Text("Go", style: TextStyle(fontWeight: FontWeight.bold)),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: guideTeal,
-                      side: BorderSide(color: guideTeal.withOpacity(0.2), width: 2),
+                      side: BorderSide(color: guideTeal.withValues(alpha: 0.2), width: 2),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                     ),
                   ),

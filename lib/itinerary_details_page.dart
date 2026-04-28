@@ -1,3 +1,5 @@
+// ignore_for_file: prefer_final_fields
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart'; 
 import 'package:latlong2/latlong.dart' as ll;
@@ -88,7 +90,7 @@ Widget build(BuildContext context) {
   return Scaffold(
     extendBodyBehindAppBar: true,
     appBar: AppBar(
-      backgroundColor: Colors.white.withOpacity(0.8),
+      backgroundColor: Colors.white.withValues(alpha: 0.8),
       elevation: 0,
       leading: IconButton(
         icon: const Icon(Icons.arrow_back_ios_new, size: 18, color: Colors.black),
@@ -119,7 +121,7 @@ Widget build(BuildContext context) {
               polylines: [
                 Polyline(
                   points: widget.route.stops.map((s) => ll.LatLng(s.place.lat, s.place.lng)).toList(),
-                  color: Colors.red.withOpacity(0.7),
+                  color: Colors.red.withValues(alpha: 0.7),
                   strokeWidth: 4.0,
                 ),
               ],
@@ -200,11 +202,11 @@ Widget build(BuildContext context) {
           children: [
             const Icon(Icons.circle, color: Colors.teal, size: 12),
             if (!isLast) ...[
-              Container(width: 2, height: 40, color: Colors.teal.withOpacity(0.2)),
+              Container(width: 2, height: 40, color: Colors.teal.withValues(alpha: 0.2)),
               // Display the Google-fetched distance here!
               if (!_isLoadingData && _legDistances.containsKey(index))
                 RotatedBox(quarterTurns: 1, child: Text(" ${_legDistances[index]} ", style: const TextStyle(fontSize: 9, color: Colors.teal, fontWeight: FontWeight.bold))),
-              Container(width: 2, height: 40, color: Colors.teal.withOpacity(0.2)),
+              Container(width: 2, height: 40, color: Colors.teal.withValues(alpha: 0.2)),
             ]
           ],
         ),

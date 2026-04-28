@@ -227,7 +227,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: kGreenAccent.withOpacity(0.1),
+                color: kGreenAccent.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: const Icon(
@@ -349,7 +349,7 @@ class _BottomInputAreaState extends State<BottomInputArea> {
         children: [
           Container(
             decoration: BoxDecoration(
-              color: kLightGrey.withOpacity(0.6),
+              color: kLightGrey.withValues(alpha: 0.6),
               borderRadius: BorderRadius.circular(24),
             ),
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),

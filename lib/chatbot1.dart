@@ -133,16 +133,16 @@ class _ChatbotInputScreenState extends State<ChatbotInputScreen> {
                 color: Colors.white,
                 boxShadow: [
                   BoxShadow(
-                    color: kGreenAccent.withOpacity(0.5),
+                    color: kGreenAccent.withValues(alpha: 0.5),
                     blurRadius: 25,
                     spreadRadius: 8,
                   ),
                 ],
                 gradient: RadialGradient(
                   colors: [
-                    kGreenAccent.withOpacity(0.8),
-                    kGreenAccent.withOpacity(0.3),
-                    Colors.white.withOpacity(0),
+                    kGreenAccent.withValues(alpha: 0.8),
+                    kGreenAccent.withValues(alpha: 0.3),
+                    Colors.white.withValues(alpha: 0),
                   ],
                   stops: const [0.0, 0.4, 1.0],
                 ),
@@ -241,7 +241,7 @@ class BottomInputArea extends StatelessWidget {
           ),
           Container(
             decoration: BoxDecoration(
-              color: kLightGrey.withOpacity(0.6),
+              color: kLightGrey.withValues(alpha: 0.6),
               borderRadius: BorderRadius.circular(24),
             ),
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),

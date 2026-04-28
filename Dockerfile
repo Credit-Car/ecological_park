@@ -14,8 +14,14 @@ WORKDIR /home/flutter/app
 COPY --chown=flutter:flutter pubspec.* ./
 RUN flutter pub get
 
-# 4. Copy code and build for web
+# 4. Copy code
 COPY --chown=flutter:flutter . .
+
+# ADD THESE TWO LINES TO DEBUG:
+RUN flutter clean
+RUN flutter pub get
+
+# 5. Build for web
 RUN flutter build web --release
 
 # --- Stage 2: Serve with Nginx ---

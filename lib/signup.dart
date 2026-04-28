@@ -162,7 +162,7 @@ class SignUpPageState extends ConsumerState<SignUpPage> {
          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message ?? 'Signup failed')));
       }
     } catch (e) {
-       print("Signup Error: $e");
+      // print("Signup Error: $e");
        if (mounted) {
          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
        }
@@ -238,7 +238,7 @@ class SignUpPageState extends ConsumerState<SignUpPage> {
           );
         }
       } catch(e) {
-        print("Error fetching/creating user profile: $e");
+      //  print("Error fetching/creating user profile: $e");
         // Proceed anyway? Or show error?
       }
   }
