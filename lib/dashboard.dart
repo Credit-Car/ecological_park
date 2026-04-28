@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:travel_app/dataconnect_generated/generated.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-
+import 'mockdata.dart';
 
 // Destination Model
 class Destination {
@@ -36,24 +36,40 @@ class Dashboard extends StatefulWidget {
 class _DashboardState extends State<Dashboard> {
 
   Future<List<Destination>> fetchPlaces() async {
+  try {
     final res = await ExampleConnector.instance.listPlaces().execute();
     
-    // Convert to a modifiable list to shuffle
-    final places = res.data.places.toList();
-    places.shuffle();
+    if (res.data.places.isEmpty) {
+      return _getMockFallback();
+    }
 
-    return places.map((e) => Destination(
+    return res.data.places.map((e) => Destination(
       name: e.name,
-      category: 'Restaurant', // Or derive from description/other fields if available
-      image: (e.images != null && e.images!.isNotEmpty) 
-          ? e.images!.join(',') 
-          : 'https://via.placeholder.com/150',
-      description: e.description ?? 'No description',
+      category: 'Explore', 
+      image: (e.images != null && e.images!.isNotEmpty) ? e.images!.first : 'https://via.placeholder.com/150',
+      description: e.description ?? '',
       location: e.coordinates,
-      rating: 4.3, // Placeholder
-      price: '\$100', // Placeholder
+      rating: 4.5,
+      price: 'Free',
     )).toList();
+
+  } catch (e) {
+    debugPrint("Backend unreachable, using Matai’an Mock Data: $e");
+    return _getMockFallback();
   }
+}
+
+List<Destination> _getMockFallback() {
+  return MockData.availablePlaces.map((p) => Destination(
+    name: p.name,
+    category: p.category,
+    image: p.imageUrl,
+    description: p.detail,
+    location: "Guangfu, Hualien",
+    rating: 4.8,
+    price: p.category == 'Culture' ? '\$250' : 'Free',
+  )).toList();
+}
 
 
   final TextEditingController _searchController = TextEditingController();
@@ -339,8 +355,8 @@ class _DetailsPageState extends State<DetailsPage> {
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
-                            Text(widget.destination.price, style: const TextStyle(fontSize: 22, color: primaryColor, fontWeight: FontWeight.bold)),
-                            const Text("/person", style: TextStyle(color: Colors.grey, fontSize: 12)),
+                            Text(widget.destination.price, style: const TextStyle(fontSize: 22, color: Colors.teal, fontWeight: FontWeight.bold)),
+                            //const Text("/person", style: TextStyle(color: Colors.grey, fontSize: 12)),
                           ],
                         ),
                       ],
@@ -386,25 +402,40 @@ class _DetailsPageState extends State<DetailsPage> {
                         )
                       ],
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 10),
 
+                    // Note Section
+                    Row(children: [
+                      const Icon(Icons.info_outline_rounded, size: 15, color: Colors.grey),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          "Note: Pictures were taken from East Rift Valley National Scenic Area website.",
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: Colors.grey.shade500,
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                    ],),
                     // Reviews and Rating Row
-                    Row(
-                      children: [
-                        _buildAvatarStack(),
-                        const SizedBox(width: 8),
-                        const Text("People Reviewed", style: TextStyle(color: Colors.grey, fontSize: 13)),
-                        const Spacer(),
-                        const Icon(Icons.star, color: Colors.orange, size: 20),
-                        Text(" ${widget.destination.rating} ", style: const TextStyle(fontWeight: FontWeight.bold)),
-                        const Text("/5", style: TextStyle(color: Colors.grey)),
-                      ],
-                    ),
+                    // Row(
+                    //   children: [
+                    //     _buildAvatarStack(),
+                    //     const SizedBox(width: 8),
+                    //     const Text("People Reviewed", style: TextStyle(color: Colors.grey, fontSize: 13)),
+                    //     const Spacer(),
+                    //     const Icon(Icons.star, color: Colors.orange, size: 20),
+                    //     Text(" ${widget.destination.rating} ", style: const TextStyle(fontWeight: FontWeight.bold)),
+                    //     const Text("/5", style: TextStyle(color: Colors.grey)),
+                    //   ],
+                    // ),
                     const SizedBox(height: 30),
 
                     // Overview Section
                     const Text('Overview', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                    Container(height: 3, width: 35, color: primaryColor, margin: const EdgeInsets.only(top: 4)),
+                    Container(height: 3, width: 35, color: Colors.teal, margin: const EdgeInsets.only(top: 4)),
                     const SizedBox(height: 15),
 
                     // Dynamic Description
