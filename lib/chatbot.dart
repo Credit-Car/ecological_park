@@ -190,7 +190,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
           children: [
             Icon(Icons.smart_toy_outlined, color: kGreenAccent),
             SizedBox(width: 8),
-            Text('Travel Assistant'),
+            Text('Travel Guide'),
           ],
         ),
       ),
@@ -249,6 +249,15 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
             const SizedBox(height: 12),
             Text(
               'Ask about destinations, itineraries, or travel tips.',
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey[600],
+                height: 1.5,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            Text(
+              ' 施工.',
               style: TextStyle(
                 fontSize: 16,
                 color: Colors.grey[600],

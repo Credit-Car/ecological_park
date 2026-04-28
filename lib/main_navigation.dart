@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:travel_app/add_itinerary_item_page.dart';
+//import 'package:travel_app/add_itinerary_item_page.dart';
 import 'dashboard.dart';
 import 'trips_page.dart';
 import 'chatbot.dart';
@@ -135,6 +135,43 @@ class _MainNavigationState extends ConsumerState<MainNavigation> {
   );
 }
 
+// The Footnote Widget
+  Widget _buildAppFootnote() {
+    return Container(
+      width: double.infinity,
+      color: Colors.white, // Matches the Bottom Nav Bar
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+      child: Column(
+        children: [
+          _footnoteRow(
+            Icons.construction, 
+            "Prototype: Unfinished version.", 
+            Colors.orange
+          ),
+          const SizedBox(height: 4),
+          _footnoteRow(
+            Icons.info_outline, 
+            "Images sourced from erv-nsa.gov.tw.", 
+            Colors.grey
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _footnoteRow(IconData icon, String text, Color color) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(icon, size: 12, color: color),
+        const SizedBox(width: 6),
+        Text(
+          text,
+          style: TextStyle(fontSize: 10, color: Colors.grey[600], fontWeight: FontWeight.w500),
+        ),
+      ],
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -151,18 +188,24 @@ class _MainNavigationState extends ConsumerState<MainNavigation> {
       ),
 
       // Bottom navigation bar
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        currentIndex: _selectedIndex,
-        selectedItemColor: Colors.teal,
-        unselectedItemColor: Colors.grey,
-        onTap: _onItemTapped,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
-          BottomNavigationBarItem(icon: Icon(Icons.map), label: "Plan"),
-          BottomNavigationBarItem(icon: Icon(Icons.gps_fixed), label: "Map"),
-          BottomNavigationBarItem(icon: Icon(Icons.auto_awesome), label: "GuideBook"),
-          BottomNavigationBarItem(icon: Icon(Icons.settings), label: "Settings"),
+      bottomNavigationBar: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _buildAppFootnote(),
+          BottomNavigationBar(
+            type: BottomNavigationBarType.fixed,
+            currentIndex: _selectedIndex,
+            selectedItemColor: Colors.teal,
+            unselectedItemColor: Colors.grey,
+            onTap: _onItemTapped,
+            items: const [
+              BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
+              BottomNavigationBarItem(icon: Icon(Icons.map), label: "Plan"),
+              BottomNavigationBarItem(icon: Icon(Icons.gps_fixed), label: "Map"),
+              BottomNavigationBarItem(icon: Icon(Icons.auto_awesome), label: "GuideBook"),
+            // BottomNavigationBarItem(icon: Icon(Icons.settings), label: "Settings"),
+            ],
+          )
         ],
       ),
     );
