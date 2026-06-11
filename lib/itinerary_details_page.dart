@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:url_launcher/url_launcher.dart';
 import 'models/trip.dart';
+import 'l10n/app_localizations.dart';
 
 class ItineraryDetailsPage extends StatefulWidget {
   final Trip route;
@@ -177,11 +178,11 @@ Widget build(BuildContext context) {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text("Your Journey", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+            Text(AppLocalizations.of(context)!.trip_your_journey, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
             ElevatedButton.icon(
               onPressed: _exportToGoogleMaps,
               icon: const Icon(Icons.directions_walk, size: 18),
-              label: const Text("GO"),
+              label: Text(AppLocalizations.of(context)!.trip_go, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
               style: ElevatedButton.styleFrom(backgroundColor: Colors.teal, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
             ),
           ],

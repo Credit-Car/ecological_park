@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
-//import 'package:travel_app/add_itinerary_item_page.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:travel_app/providers/current_user.dart';
+
+import 'l10n/app_localizations.dart';
+import 'l10n/locale_provider.dart';
+
 import 'dashboard.dart';
 import 'trips_page.dart';
 import 'chatbot.dart';
 import 'maps.dart';
 import 'settings.dart';
-// import 'package:firebase_data_connect/firebase_data_connect.dart';
-// import 'dataconnect_generated/generated.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:travel_app/providers/current_user.dart';
 
 class MainNavigation extends ConsumerStatefulWidget {
   const MainNavigation({super.key});
@@ -18,7 +19,6 @@ class MainNavigation extends ConsumerStatefulWidget {
 }
 
 class AvatarManager {
-  // This maps the Database Key -> The Local Asset Path
   static const Map<String, String> avatars = {
     'default': 'assets/images/avatars/default.jpg',
     'butterfly': 'assets/images/avatars/butterfly.jpg',
@@ -29,7 +29,6 @@ class AvatarManager {
     'tree': 'assets/images/avatars/tree.jpg',
   };
 
-  // Safe getter: Returns the default image if the key is missing/corrupted
   static String getAssetPath(String? key) {
     return avatars[key] ?? avatars['default']!;
   }
@@ -37,9 +36,6 @@ class AvatarManager {
 
 class _MainNavigationState extends ConsumerState<MainNavigation> {
   int _selectedIndex = 0;
-
-  // final String _defaultAvatar = AvatarManager.getAssetPath('default');
-
   final List<int> _navigationHistory = [0];
 
   late final List<Widget> _pages = [
@@ -55,9 +51,7 @@ class _MainNavigationState extends ConsumerState<MainNavigation> {
   void _onItemTapped(int index) {
     setState(() {
       if (_selectedIndex == index) return;
-      
       _selectedIndex = index;
-
       if (_navigationHistory.isEmpty || _navigationHistory.last != index) {
         _navigationHistory.add(index);
       }
@@ -67,7 +61,6 @@ class _MainNavigationState extends ConsumerState<MainNavigation> {
   void _onBackTapped() {
     if (_navigationHistory.length > 1) {
       _navigationHistory.removeLast();
-      
       setState(() {
         _selectedIndex = _navigationHistory.last;
       });
@@ -75,71 +68,75 @@ class _MainNavigationState extends ConsumerState<MainNavigation> {
   }
 
   PreferredSizeWidget? _buildAppBar() {
-  if (!_pagesWithHeader.contains(_selectedIndex)) return null;
+    if (!_pagesWithHeader.contains(_selectedIndex)) return null;
 
-  final bool showBackButton = _navigationHistory.length > 1;
-
-  final currentUser = ref.watch(currentUserProvider);
-  final userAvatarUrl = AvatarManager.getAssetPath(currentUser?.avatarKey);
-
-  return AppBar(
-    elevation: 0,
-    backgroundColor: Colors.white,
-    leading: showBackButton
-        ? IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.black),
-            onPressed: _onBackTapped,
-          )
-        : null,
+    final bool showBackButton = _navigationHistory.length > 1;
+    final currentUser = ref.watch(currentUserProvider);
+    final userAvatarUrl = AvatarManager.getAssetPath(currentUser?.avatarKey);
     
-    title: Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        // Text
-        Expanded(
+    // Read the current localization strings context
+    final l10n = AppLocalizations.of(context)!;
+
+    return AppBar(
+      elevation: 0,
+      backgroundColor: Colors.white,
+      leading: showBackButton
+          ? IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.black),
+              onPressed: _onBackTapped,
+            )
+          : null,
+      title: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start, // Align title left
+              crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
-              children: const [
-                // Text(
-                //   "Hi Bella,",
-                //   style: TextStyle(fontSize: 16, color: Colors.black54),
-                // ),
+              children: [
                 Text(
-                  "馬太鞍溼地休閒農業區",
-                  style: TextStyle(
-                    fontSize: 20,
+                  l10n.app_title, // Localized title: "馬太鞍溼地休閒農業區" / "Matai'an Wetland..."
+                  style: const TextStyle(
+                    fontSize: 18,
                     fontWeight: FontWeight.bold,
                     color: Colors.black87,
                   ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
           ),
-
-        // Notif Icon and Profile
-        Row(
-          children: [
-             IconButton(
+          Row(
+            children: [
+              // 🌐 THE LANGUAGE TOGGLE BUTTON
+              IconButton(
+                icon: const Icon(Icons.translate, color: Colors.teal),
+                tooltip: l10n.btn_language,
+                onPressed: () {
+                  // Toggle language between English and Chinese globally via Riverpod
+                  ref.read(localeProvider.notifier).toggleLanguage();
+                },
+              ),
+              IconButton(
                 icon: const Icon(Icons.notifications_none, color: Colors.teal),
                 onPressed: () {},
-             ),
-             CircleAvatar(
+              ),
+              const SizedBox(width: 4),
+              CircleAvatar(
                 radius: 18,
                 backgroundImage: AssetImage(userAvatarUrl),
               ),
-          ],
-        ),
-      ],
-    ),
-  );
-}
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 
-// The Footnote Widget
   Widget _buildAppFootnote() {
     return Container(
       width: double.infinity,
-      color: Colors.white, // Matches the Bottom Nav Bar
+      color: Colors.white,
       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
       child: Column(
         children: [
@@ -175,10 +172,11 @@ class _MainNavigationState extends ConsumerState<MainNavigation> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: _buildAppBar(),
-
       body: SafeArea(
         child: AnimatedSwitcher(
           duration: const Duration(milliseconds: 300),
@@ -186,8 +184,6 @@ class _MainNavigationState extends ConsumerState<MainNavigation> {
           child: _pages[_selectedIndex],
         ),
       ),
-
-      // Bottom navigation bar
       bottomNavigationBar: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -198,12 +194,12 @@ class _MainNavigationState extends ConsumerState<MainNavigation> {
             selectedItemColor: Colors.teal,
             unselectedItemColor: Colors.grey,
             onTap: _onItemTapped,
-            items: const [
-              BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
-              BottomNavigationBarItem(icon: Icon(Icons.map), label: "Plan"),
-              BottomNavigationBarItem(icon: Icon(Icons.gps_fixed), label: "Map"),
-              BottomNavigationBarItem(icon: Icon(Icons.auto_awesome), label: "GuideBook"),
-            // BottomNavigationBarItem(icon: Icon(Icons.settings), label: "Settings"),
+            // 🏷️ Localized Navigation Items labels
+            items: [
+              BottomNavigationBarItem(icon: const Icon(Icons.home), label: l10n.nav_home),
+              BottomNavigationBarItem(icon: const Icon(Icons.map), label: l10n.nav_trips),
+              BottomNavigationBarItem(icon: const Icon(Icons.gps_fixed), label: l10n.nav_map), // Reuses map string context
+              BottomNavigationBarItem(icon: const Icon(Icons.auto_awesome), label: l10n.nav_audio_guide),
             ],
           )
         ],

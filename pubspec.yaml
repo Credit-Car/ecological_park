@@ -34,12 +34,12 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-    
-  
+
   video_player: ^2.8.1
-  
   # Maps Packages
-  intl: ^0.20.2
+  flutter_localizations:
+    sdk: flutter
+  intl: ^0.20.0
   flutter_map: ^8.2.2 # Or the latest version
   google_maps_flutter: ^2.6.0
   pointer_interceptor: ^0.10.1+1
@@ -104,6 +104,7 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
+  generate: true
   # To add assets to your application, add an assets section, like this:
   assets:
    - assets/images/

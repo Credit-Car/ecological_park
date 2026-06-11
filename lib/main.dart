@@ -26,6 +26,11 @@ import 'package:travel_app/dataconnect_generated/generated.dart';
 import 'package:cloud_firestore/cloud_firestore.dart' as cloud_firestore show Timestamp;
 import 'package:flutter_web_plugins/flutter_web_plugins.dart';
 
+
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'l10n/app_localizations.dart';
+import 'l10n/locale_provider.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   usePathUrlStrategy();
@@ -37,14 +42,15 @@ void main() async {
   );
 }
 
-class WelcomePage extends StatelessWidget {
+class WelcomePage extends ConsumerWidget {
   const WelcomePage({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final locale = ref.watch(localeProvider);
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Tour Guide',
+      title: 'Matai an Park',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
           seedColor: Colors.teal,
@@ -57,6 +63,9 @@ class WelcomePage extends StatelessWidget {
         // '/': (context) => const AdminLoginPage(),
         '/admin': (context) => const AdminLoginPage(),
       },
+      locale: locale,
+      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
     );
   }
 }

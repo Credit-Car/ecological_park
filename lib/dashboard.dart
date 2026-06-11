@@ -5,6 +5,7 @@ import 'package:travel_app/dataconnect_generated/generated.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'mockdata.dart';
 import '../models/places.dart';
+import 'l10n/app_localizations.dart';
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
@@ -399,7 +400,7 @@ class _DetailsPageState extends State<DetailsPage> {
                             ),
                           ),
                           icon: const Icon(Icons.copy, size: 16),
-                          label: const Text('Copy', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                          label: Text( AppLocalizations.of(context)!.btn_add, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
                         )
                       ],
                     ),
@@ -435,7 +436,7 @@ class _DetailsPageState extends State<DetailsPage> {
                     const SizedBox(height: 30),
 
                     // Overview Section
-                    const Text('Overview', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    Text(AppLocalizations.of(context)!.btn_overview, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                     Container(height: 3, width: 35, color: Colors.teal, margin: const EdgeInsets.only(top: 4)),
                     const SizedBox(height: 15),
 
@@ -470,7 +471,7 @@ class _DetailsPageState extends State<DetailsPage> {
                     ),
                     onPressed: () {},
                     icon: const Icon(Icons.library_add_check_outlined, color: Colors.white),
-                    label: const Text('Add ', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                    label: Text( AppLocalizations.of(context)!.btn_add, style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -483,7 +484,8 @@ class _DetailsPageState extends State<DetailsPage> {
                     ),
                     onPressed: () {},
                     icon: const Icon(Icons.map_outlined, color: Colors.white),
-                    label: const Text('View', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                    label: Text( AppLocalizations.of(context)!.btn_view, style:  TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),),
+              
                   ),
                 ),
               ],

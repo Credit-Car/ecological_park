@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // For LogicalKeyboardKey
 import 'package:http/http.dart' as http; // HTTP requests
 import 'package:uuid/uuid.dart'; // For Session ID generation
+import 'l10n/app_localizations.dart';
 
 // --- Custom Colors ---
 const Color kGreenAccent = Colors.teal;
@@ -12,43 +13,15 @@ const Color kLightGrey = Color(0xFFF0F0F0);
 const Color kBotBubbleColor = Color(0xFFE0E0E0);
 const Color kUserBubbleColor = Colors.teal;
 
-// --- Configuration (Mirrors chat-widget.js Config) ---
-// If testing on Android Emulator, use 'http://10.0.2.2:5454/webhook'
-// If testing on iOS Simulator or Web, use 'http://localhost:5454/webhook'
 const String kBaseUrl = 'http://localhost:5678/webhook/282b07f6-e889-432e-8b1b-f31979563281/chat';
 const String kRoute = 'general';
-
-void main() {
-  runApp(const ChatbotApp());
-}
 
 class ChatbotApp extends StatelessWidget {
   const ChatbotApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Guidebook Chatbot',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        fontFamily: 'Inter',
-        colorScheme: ColorScheme.fromSeed(seedColor: kGreenAccent),
-        scaffoldBackgroundColor: Colors.white,
-        useMaterial3: true,
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Colors.white,
-          surfaceTintColor: Colors.transparent,
-          elevation: 0,
-          centerTitle: true,
-          titleTextStyle: TextStyle(
-            color: Colors.black87,
-            fontWeight: FontWeight.w600,
-            fontSize: 18,
-          ),
-        ),
-      ),
-      home: const ChatbotScreen(),
-    );
+    return const ChatbotScreen();
   }
 }
 
@@ -60,16 +33,11 @@ class ChatbotScreen extends StatefulWidget {
 }
 
 class _ChatbotScreenState extends State<ChatbotScreen> {
-  // Store messages here. Format: {text: String, isUser: bool}
   final List<Map<String, dynamic>> _messages = [];
-  
-  // Controller to read and clear input
   final TextEditingController _textController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   
   bool _isTyping = false;
-
-  // Session Management
   late String _sessionId;
 
   @override
@@ -78,7 +46,6 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
     _sessionId = const Uuid().v4();
   }
 
-  // Handle sending a message
   void _handleSubmitted(String text) {
     final trimmedText = text.trim();
     if (trimmedText.isEmpty) return; 
@@ -94,9 +61,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
     _sendMessageToBackend(trimmedText);
   }
 
-  // Implements the specific JSON payload structure from chat-widget.js
   Future<void> _sendMessageToBackend(String userQuery) async {
-    // Correct localhost for Android Emulator if needed
     String urlString = kBaseUrl;
     if (!kIsWeb && Platform.isAndroid && kBaseUrl.contains('localhost')) {
       urlString = kBaseUrl.replaceFirst('localhost', '10.0.2.2');
@@ -123,7 +88,6 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
 
       if (response.statusCode == 200) {
         final dynamic data = jsonDecode(response.body);
-        
         String botOutput = "No response text found.";
         
         if (data is List && data.isNotEmpty) {
@@ -135,7 +99,6 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
         if (mounted) {
           setState(() {
             _isTyping = false;
-            // Clean up thinking process if exposed
             final cleanOutput = botOutput.contains('</think>') 
                 ? botOutput.split('</think>').last.trim() 
                 : botOutput;
@@ -183,14 +146,19 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final String greetingText = l10n?.chatbot_greeting ?? "How can I help you?";
+    final String placeholderText = l10n?.chatbot_placeholder ?? "Ask about destinations, itineraries, or travel tips.";
+    final String labelAsk = l10n?.chatbot_btn_ask ?? "Ask Guide";
+
     return Scaffold(
       appBar: AppBar(
-        title: const Row(
+        title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.smart_toy_outlined, color: kGreenAccent),
-            SizedBox(width: 8),
-            Text('Travel Guide'),
+            const Icon(Icons.smart_toy_outlined, color: kGreenAccent),
+            const SizedBox(width: 8),
+            Text(labelAsk),
           ],
         ),
       ),
@@ -199,7 +167,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
           children: <Widget>[
             Expanded(
               child: _messages.isEmpty 
-                  ? _buildWelcomeView() 
+                  ? _buildWelcomeView(greetingText, placeholderText) 
                   : _buildChatListView(),
             ),
             if (_isTyping)
@@ -217,7 +185,8 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
     );
   }
 
-  Widget _buildWelcomeView() {
+  // Pass localized strings arguments safely down into the welcome layout tree
+  Widget _buildWelcomeView(String greeting, String placeholder) {
     return Center(
       child: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 32.0),
@@ -237,9 +206,9 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
               ),
             ),
             const SizedBox(height: 24),
-            const Text(
-              'How can I help you?',
-              style: TextStyle(
+            Text(
+              greeting,
+              style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.w600,
                 color: Colors.black87,
@@ -248,16 +217,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
             ),
             const SizedBox(height: 12),
             Text(
-              'Ask about destinations, itineraries, or travel tips.',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey[600],
-                height: 1.5,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            Text(
-              ' 施工.',
+              placeholder,
               style: TextStyle(
                 fontSize: 16,
                 color: Colors.grey[600],
@@ -313,8 +273,6 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
   }
 }
 
-
-// --- Modified Input Area ---
 class BottomInputArea extends StatefulWidget {
   final TextEditingController controller;
   final Function(String) onSubmitted;
@@ -330,7 +288,6 @@ class BottomInputArea extends StatefulWidget {
 }
 
 class _BottomInputAreaState extends State<BottomInputArea> {
-  // FocusNode not needed for CallbackShortcuts if we don't need other focus logic
   final FocusNode _focusNode = FocusNode();
 
   @override
@@ -354,9 +311,8 @@ class _BottomInputAreaState extends State<BottomInputArea> {
             ),
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end, // Align items to bottom for multiline growth
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                // Text Input
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 12.0),
@@ -377,7 +333,7 @@ class _BottomInputAreaState extends State<BottomInputArea> {
                         decoration: const InputDecoration(
                           hintText: 'Aa',
                           border: InputBorder.none,
-                          counterText: '', // Hide default counter
+                          counterText: '',
                           contentPadding: EdgeInsets.symmetric(vertical: 14.0), 
                         ),
                         style: const TextStyle(fontSize: 14),
@@ -385,14 +341,11 @@ class _BottomInputAreaState extends State<BottomInputArea> {
                     ),
                   ),
                 ),
-                
-                // Action Buttons
                 Padding(
                   padding: const EdgeInsets.only(bottom: 4.0),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Explicit Send Button
                       Container(
                         margin: const EdgeInsets.only(right: 4.0),
                         decoration: const BoxDecoration(
