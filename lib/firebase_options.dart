@@ -61,5 +61,4 @@ class DefaultFirebaseOptions {
     storageBucket: 'travel-assistant-ab988.firebasestorage.app',
     measurementId: 'G-S6GWGKTMGN',
   );
-
 }

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-// import '../models/trip.dart';
 import '../models/places.dart';
 import '../models/trip.dart';
+import 'l10n/app_localizations.dart';
 
 class AddTripStopPage extends StatefulWidget {
   final Trip trip;
@@ -31,72 +31,73 @@ class _AddTripStopPageState extends State<AddTripStopPage> {
     _selectedDateTime = widget.trip.startDate;
   }
 
-void _pickDateTime() async {
-  // 1. Pick the Date
-  final DateTime? pickedDate = await showDatePicker(
-    context: context,
-    initialDate: widget.trip.startDate,
-    firstDate: widget.trip.startDate,
-    lastDate: widget.trip.endDate,
-    builder: (context, child) => Theme(
-      data: Theme.of(context).copyWith(
-        colorScheme: const ColorScheme.light(
-          primary: Colors.teal,
-          onPrimary: Colors.white,
-          onSurface: Colors.black87,
-        ),
-      ),
-      child: child!,
-    ),
-  );
+  @override
+  void dispose() {
+    _notesController.dispose();
+    super.dispose();
+  }
 
-  // Check if the user closed the page while the DatePicker was open
-  if (!mounted) return; 
-
-  if (pickedDate != null) {
-    // 2. Pick the Time
-    final TimeOfDay? pickedTime = await showTimePicker(
+  void _pickDateTime() async {
+    // 1. Pick the Date
+    final DateTime? pickedDate = await showDatePicker(
       context: context,
-      initialTime: const TimeOfDay(hour: 12, minute: 0),
+      initialDate: widget.trip.startDate,
+      firstDate: widget.trip.startDate,
+      lastDate: widget.trip.endDate,
+      builder: (context, child) => Theme(
+        data: Theme.of(context).copyWith(
+          colorScheme: const ColorScheme.light(
+            primary: Colors.teal,
+            onPrimary: Colors.white,
+            onSurface: Colors.black87,
+          ),
+        ),
+        child: child!,
+      ),
     );
 
-    // Check again before using context or calling setState
-    if (!mounted) return;
+    if (!mounted) return; 
 
-    if (pickedTime != null) {
-      setState(() {
-        _selectedDateTime = DateTime(
-          pickedDate.year,
-          pickedDate.month,
-          pickedDate.day,
-          pickedTime.hour,
-          pickedTime.minute,
-        );
-      });
+    if (pickedDate != null) {
+      // 2. Pick the Time
+      final TimeOfDay? pickedTime = await showTimePicker(
+        context: context,
+        initialTime: const TimeOfDay(hour: 12, minute: 0),
+      );
+
+      if (!mounted) return;
+
+      if (pickedTime != null) {
+        setState(() {
+          _selectedDateTime = DateTime(
+            pickedDate.year,
+            pickedDate.month,
+            pickedDate.day,
+            pickedTime.hour,
+            pickedTime.minute,
+          );
+        });
+      }
     }
   }
-}
 
   void _saveStop() {
     if (_formKey.currentState!.validate() && _selectedPlace != null && _selectedDateTime != null) {
-      // Creating a new TripStop using the updated model structure
       final newStop = TripStop(
         place: _selectedPlace!,
         scheduledTime: _selectedDateTime!,
         customNotes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
       );
 
-      // Mutate the local trip object (will be reflected in ItineraryDetailsPage)
       widget.trip.stops.add(newStop);
-      
-      // Sort stops by time automatically so the timeline stays chronological
       widget.trip.stops.sort((a, b) => a.scheduledTime.compareTo(b.scheduledTime));
       
       Navigator.pop(context, true);
     } else {
+      // Fallback if selections are incomplete
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please select a building and time.'),
+          content: Text('Please select a location and time.'),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -106,11 +107,12 @@ void _pickDateTime() async {
   @override
   Widget build(BuildContext context) {
     const primaryTeal = Colors.teal;
+    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('Add Stop', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 22)),
+        title: Text(l10n.btn_add, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 22)),
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
         elevation: 0,
@@ -123,8 +125,9 @@ void _pickDateTime() async {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text("Select Building", 
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black54)),
+              // Localized: "景點" / "Scenic Spot" (or use filter_scenic_spot dynamically)
+              Text(l10n.filter_scenic_spot, 
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black54)),
               const SizedBox(height: 12),
               
               // Place Selection Dropdown
@@ -136,8 +139,9 @@ void _pickDateTime() async {
                 ),
                 child: DropdownButtonFormField<Places>(
                   decoration: const InputDecoration(border: InputBorder.none),
-                  hint: const Text("Where are we going?"),
-                  initialValue: _selectedPlace,
+                  // Localized: "Aa" or custom placeholder text can be added, otherwise localized target fallback:
+                  hint: Text(l10n.chatbot_placeholder.substring(0, 7) + "..."), 
+                  value: _selectedPlace,
                   icon: const Icon(Icons.location_on_rounded, color: primaryTeal),
                   items: widget.availablePlaces.map((place) {
                     return DropdownMenuItem(
@@ -151,8 +155,9 @@ void _pickDateTime() async {
               
               const SizedBox(height: 24),
               
-              const Text("Arrival Time", 
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black54)),
+              // Localized: "停靠站" / "Stops"
+              Text(l10n.trip_stops, 
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black54)),
               const SizedBox(height: 12),
 
               // Date/Time Selection Tile
@@ -172,7 +177,7 @@ void _pickDateTime() async {
                       const SizedBox(width: 16),
                       Text(
                         _selectedDateTime == null 
-                          ? "Set Arrival Time" 
+                          ? l10n.trip_select_dates 
                           : "${_selectedDateTime!.day}/${_selectedDateTime!.month} @ ${TimeOfDay.fromDateTime(_selectedDateTime!).format(context)}",
                         style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: primaryTeal),
                       ),
@@ -185,15 +190,16 @@ void _pickDateTime() async {
 
               const SizedBox(height: 24),
 
-              const Text("Task or Notes", 
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black54)),
+              // Localized: "關於園區" / "About Park" (Acts as dynamic overview header helper)
+              Text(l10n.nav_about, 
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black54)),
               const SizedBox(height: 12),
 
               TextFormField(
                 controller: _notesController,
                 maxLines: 3,
                 decoration: InputDecoration(
-                  hintText: "What are you doing here? (Optional)",
+                  hintText: l10n.chatbot_placeholder, // Reuses "Ask about destinations..." input block hint
                   filled: true,
                   fillColor: Colors.grey[100],
                   border: OutlineInputBorder(
@@ -216,8 +222,9 @@ void _pickDateTime() async {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
                     elevation: 0,
                   ),
-                  child: const Text("Save to Itinerary", 
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  // Localized: "建立旅程" / "Create Journey"
+                  child: Text(l10n.trip_create_journey, 
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 ),
               ),
             ],
