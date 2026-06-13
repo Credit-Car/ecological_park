@@ -1,25 +1,7 @@
-// library dataconnect_generated;
+library dataconnect_generated;
 import 'package:firebase_data_connect/firebase_data_connect.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:convert';
-
-part 'create_admin.dart';
-
-part 'create_user.dart';
-
-part 'update_user.dart';
-
-part 'delete_user.dart';
-
-part 'create_place.dart';
-
-part 'update_place.dart';
-
-part 'delete_place.dart';
-
-part 'create_route.dart';
-
-part 'update_user_avatar.dart';
 
 part 'list_users.dart';
 
@@ -41,6 +23,24 @@ part 'get_route.dart';
 
 part 'get_user_avatar_key.dart';
 
+part 'create_admin.dart';
+
+part 'create_user.dart';
+
+part 'update_user.dart';
+
+part 'delete_user.dart';
+
+part 'create_place.dart';
+
+part 'update_place.dart';
+
+part 'delete_place.dart';
+
+part 'create_route.dart';
+
+part 'update_user_avatar.dart';
+
 
 
 
@@ -48,51 +48,6 @@ part 'get_user_avatar_key.dart';
 
 
 class ExampleConnector {
-  
-  
-  CreateAdminVariablesBuilder createAdmin ({required String uid, required String displayname, required String email, }) {
-    return CreateAdminVariablesBuilder(dataConnect, uid: uid,displayname: displayname,email: email,);
-  }
-  
-  
-  CreateUserVariablesBuilder createUser ({required String uid, required String displayname, required String email, }) {
-    return CreateUserVariablesBuilder(dataConnect, uid: uid,displayname: displayname,email: email,);
-  }
-  
-  
-  UpdateUserVariablesBuilder updateUser ({required String userId, }) {
-    return UpdateUserVariablesBuilder(dataConnect, userId: userId,);
-  }
-  
-  
-  DeleteUserVariablesBuilder deleteUser ({required String userId, }) {
-    return DeleteUserVariablesBuilder(dataConnect, userId: userId,);
-  }
-  
-  
-  CreatePlaceVariablesBuilder createPlace ({required String name, required String coordinates, }) {
-    return CreatePlaceVariablesBuilder(dataConnect, name: name,coordinates: coordinates,);
-  }
-  
-  
-  UpdatePlaceVariablesBuilder updatePlace ({required String placeId, }) {
-    return UpdatePlaceVariablesBuilder(dataConnect, placeId: placeId,);
-  }
-  
-  
-  DeletePlaceVariablesBuilder deletePlace ({required String placeId, }) {
-    return DeletePlaceVariablesBuilder(dataConnect, placeId: placeId,);
-  }
-  
-  
-  CreateRouteVariablesBuilder createRoute ({required String userId, required String name, }) {
-    return CreateRouteVariablesBuilder(dataConnect, userId: userId,name: name,);
-  }
-  
-  
-  UpdateUserAvatarVariablesBuilder updateUserAvatar ({required String userId, required String avatarKey, }) {
-    return UpdateUserAvatarVariablesBuilder(dataConnect, userId: userId,avatarKey: avatarKey,);
-  }
   
   
   ListUsersVariablesBuilder listUsers () {
@@ -142,6 +97,51 @@ class ExampleConnector {
   
   GetUserAvatarKeyVariablesBuilder getUserAvatarKey ({required String userId, }) {
     return GetUserAvatarKeyVariablesBuilder(dataConnect, userId: userId,);
+  }
+  
+  
+  CreateAdminVariablesBuilder createAdmin ({required String uid, required String displayname, required String email, }) {
+    return CreateAdminVariablesBuilder(dataConnect, uid: uid,displayname: displayname,email: email,);
+  }
+  
+  
+  CreateUserVariablesBuilder createUser ({required String uid, required String displayname, required String email, }) {
+    return CreateUserVariablesBuilder(dataConnect, uid: uid,displayname: displayname,email: email,);
+  }
+  
+  
+  UpdateUserVariablesBuilder updateUser ({required String userId, }) {
+    return UpdateUserVariablesBuilder(dataConnect, userId: userId,);
+  }
+  
+  
+  DeleteUserVariablesBuilder deleteUser ({required String userId, }) {
+    return DeleteUserVariablesBuilder(dataConnect, userId: userId,);
+  }
+  
+  
+  CreatePlaceVariablesBuilder createPlace ({required String name, required String coordinates, }) {
+    return CreatePlaceVariablesBuilder(dataConnect, name: name,coordinates: coordinates,);
+  }
+  
+  
+  UpdatePlaceVariablesBuilder updatePlace ({required String placeId, }) {
+    return UpdatePlaceVariablesBuilder(dataConnect, placeId: placeId,);
+  }
+  
+  
+  DeletePlaceVariablesBuilder deletePlace ({required String placeId, }) {
+    return DeletePlaceVariablesBuilder(dataConnect, placeId: placeId,);
+  }
+  
+  
+  CreateRouteVariablesBuilder createRoute ({required String userId, required String name, }) {
+    return CreateRouteVariablesBuilder(dataConnect, userId: userId,name: name,);
+  }
+  
+  
+  UpdateUserAvatarVariablesBuilder updateUserAvatar ({required String userId, required String avatarKey, }) {
+    return UpdateUserAvatarVariablesBuilder(dataConnect, userId: userId,avatarKey: avatarKey,);
   }
   
 

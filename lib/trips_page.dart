@@ -5,6 +5,7 @@ import 'models/trip.dart';
 import 'itinerary_details_page.dart';
 import 'mockdata.dart';
 import 'providers/current_user.dart';
+import 'l10n/app_localizations.dart';
 
 class TripsPage extends ConsumerStatefulWidget {
   const TripsPage({super.key});
@@ -16,8 +17,6 @@ class TripsPage extends ConsumerStatefulWidget {
 class _TripsPageState extends ConsumerState<TripsPage> {
   int _activeSegment = 0;
   final PageController _pageController = PageController();
-  
-  // This will hold our local state of trips during the session
   late List<Trip> _allTrips;
 
   @override
@@ -26,10 +25,8 @@ class _TripsPageState extends ConsumerState<TripsPage> {
     _syncWithMockData();
   }
 
-  /// Loads trips from mockdata.dart filtered by the current user
   void _syncWithMockData() {
     final currentUser = ref.read(currentUserProvider);
-    // Use the mockUserId from your file if the provider is null (for testing)
     final String uid = currentUser?.id ?? MockData.mockUserId;
 
     _allTrips = MockData.getAllTrips()
@@ -49,9 +46,20 @@ class _TripsPageState extends ConsumerState<TripsPage> {
   }
 
   void _showCreateTripSheet() {
+    final l10n = AppLocalizations.of(context)!;
     final nameController = TextEditingController();
-    String selectedType = 'Leisure';
+    
+    //  FIX 1: Keep the backend key value generic/constant ('Leisure')
+    String selectedType = 'Leisure'; 
     DateTimeRange? selectedRange;
+
+    // Define a map matching raw backend database keys to localized display labels
+    final Map<String, String> categoryLabels = {
+      'Leisure': l10n.category_leisure,
+      'Education': l10n.category_education,
+      'Culture': l10n.category_culture,
+      'Adventure': l10n.category_adventure,
+    };
 
     showModalBottomSheet(
       context: context,
@@ -70,14 +78,14 @@ class _TripsPageState extends ConsumerState<TripsPage> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text("Plan New Journey", 
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: -0.5)),
+              Text(l10n.trip_plan_new, 
+                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: -0.5)),
               const SizedBox(height: 24),
               
               TextField(
                 controller: nameController,
                 decoration: InputDecoration(
-                  labelText: "Trip Name",
+                  labelText: l10n.trip_name,
                   filled: true,
                   fillColor: Colors.grey[50],
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
@@ -103,7 +111,7 @@ class _TripsPageState extends ConsumerState<TripsPage> {
                       const SizedBox(width: 12),
                       Text(
                         selectedRange == null 
-                          ? "Select Dates" 
+                          ? l10n.trip_select_dates 
                           : "${DateFormat('MMM d').format(selectedRange!.start)} - ${DateFormat('MMM d').format(selectedRange!.end)}",
                         style: TextStyle(color: selectedRange == null ? Colors.grey[600] : Colors.black),
                       ),
@@ -113,16 +121,21 @@ class _TripsPageState extends ConsumerState<TripsPage> {
               ),
               const SizedBox(height: 16),
 
+              //  FIX 2: Match raw selection keys to localized display text
               DropdownButtonFormField<String>(
-                initialValue: selectedType,
+                value: selectedType, // Initial constant key 'Leisure'
                 decoration: InputDecoration(
-                  labelText: "Category",
+                  labelText: l10n.trip_stops,
                   filled: true,
                   fillColor: Colors.grey[50],
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
                 ),
-                items: ['Leisure', 'Education', 'Culture', 'Adventure']
-                    .map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+                items: categoryLabels.entries.map((entry) {
+                  return DropdownMenuItem<String>(
+                    value: entry.key,          // Backend value ('Leisure', 'Culture')
+                    child: Text(entry.value),  // Localized visible label ("休閒活動", "文化體驗")
+                  );
+                }).toList(),
                 onChanged: (val) => setSheetState(() => selectedType = val!),
               ),
               const SizedBox(height: 32),
@@ -142,7 +155,7 @@ class _TripsPageState extends ConsumerState<TripsPage> {
                         id: 'trip_${DateTime.now().millisecondsSinceEpoch}',
                         userId: ref.read(currentUserProvider)?.id ?? MockData.mockUserId,
                         name: nameController.text.trim(),
-                        type: selectedType,
+                        type: selectedType, // Saves the structured language key safely
                         startDate: selectedRange!.start,
                         endDate: selectedRange!.end,
                         stops: [], 
@@ -155,8 +168,8 @@ class _TripsPageState extends ConsumerState<TripsPage> {
                       );
                     }
                   },
-                  child: const Text("Create Journey", 
-                    style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                  child: Text(l10n.trip_create_journey, 
+                    style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
                 ),
               ),
             ],
@@ -168,12 +181,13 @@ class _TripsPageState extends ConsumerState<TripsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     const accentColor = Colors.teal;
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text("My Journeys", 
-          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 26, letterSpacing: -1)),
+        title: Text(l10n.trip_my_journeys, 
+          style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 26, letterSpacing: -1)),
         centerTitle: false,
         elevation: 0,
         backgroundColor: Colors.white,
@@ -198,7 +212,7 @@ class _TripsPageState extends ConsumerState<TripsPage> {
         backgroundColor: accentColor,
         onPressed: _showCreateTripSheet,
         icon: const Icon(Icons.add_rounded, color: Colors.white),
-        label: const Text('Plan New', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        label: Text(l10n.trip_create_journey, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
       ),
     );
   }
@@ -211,8 +225,8 @@ class _TripsPageState extends ConsumerState<TripsPage> {
       decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(14)),
       child: Row(
         children: [
-          _buildSegment(0, 'Upcoming', color),
-          _buildSegment(1, 'History', color),
+          _buildSegment(0, AppLocalizations.of(context)!.tab_upcoming, color),
+          _buildSegment(1, AppLocalizations.of(context)!.tab_history, color),
         ],
       ),
     );
@@ -241,8 +255,8 @@ class _TripsPageState extends ConsumerState<TripsPage> {
   }
 
   Widget _buildTripList({required bool isPast, required Color accentColor}) {
+    final l10n = AppLocalizations.of(context)!;
     final now = DateTime.now();
-    // Filter trips based on time and the data from MockData
     final trips = _allTrips.where((t) {
       return isPast ? t.startDate.isBefore(now) : t.startDate.isAfter(now);
     }).toList();
@@ -254,7 +268,7 @@ class _TripsPageState extends ConsumerState<TripsPage> {
           children: [
             Icon(Icons.map_outlined, size: 48, color: Colors.grey[200]),
             const SizedBox(height: 12),
-            Text("No ${isPast ? 'past' : 'upcoming'} journeys", 
+            Text(l10n.trip_no_upcoming, 
               style: TextStyle(color: Colors.grey[400])),
           ],
         ),
@@ -284,8 +298,8 @@ class _TripsPageState extends ConsumerState<TripsPage> {
   }
 
   Widget _buildTripCard(Trip trip, Color color) {
-    // Dynamically pull the image from the first stop in MockData
     String? coverImage = trip.stops.isNotEmpty ? trip.stops.first.place.imageUrl : null;
+    final l10n = AppLocalizations.of(context)!;
 
     return GestureDetector(
       onTap: () => Navigator.of(context).push(
@@ -319,7 +333,8 @@ class _TripsPageState extends ConsumerState<TripsPage> {
                     const SizedBox(width: 4),
                     Text(DateFormat('MMM d').format(trip.startDate), style: TextStyle(color: Colors.grey[600], fontSize: 12)),
                     const Text("  •  "),
-                    Text("${trip.stops.length} Stops", style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 12)),
+                    // Localized Stops dynamic context handling
+                    Text("${trip.stops.length} ${l10n.trip_stops}", style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 12)),
                   ],
                 ),
               ),

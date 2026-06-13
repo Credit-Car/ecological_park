@@ -5,6 +5,8 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:pointer_interceptor/pointer_interceptor.dart';
 import 'models/places.dart';
 import 'mockdata.dart';
+import 'l10n/app_localizations.dart';
+import 'l10n/locale_provider.dart';
 
 class CampusMapViewerPage extends StatefulWidget {
   const CampusMapViewerPage({super.key});
@@ -253,7 +255,7 @@ Widget _buildModernInfoCard() {
                   child: ElevatedButton.icon(
                     onPressed: () => _openChatForPlace(_selectedPlace!),
                     icon: const Icon(Icons.auto_awesome, size: 18),
-                    label: const Text("Ask Guide", style: TextStyle(fontWeight: FontWeight.bold)),
+                    label: Text( AppLocalizations.of(context)!.chatbot_btn_ask, style: const TextStyle(fontWeight: FontWeight.bold),),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: guideTeal, 
                       foregroundColor: Colors.white,
@@ -271,7 +273,7 @@ Widget _buildModernInfoCard() {
                   child: OutlinedButton.icon(
                     onPressed: () => _openGoogleMaps(_selectedPlace!),
                     icon: const Icon(Icons.directions_rounded, size: 18),
-                    label: const Text("Go", style: TextStyle(fontWeight: FontWeight.bold)),
+                    label: Text(AppLocalizations.of(context)!.trip_go, style: const TextStyle(fontWeight: FontWeight.bold)),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: guideTeal,
                       side: BorderSide(color: guideTeal.withValues(alpha: 0.2), width: 2),
