@@ -45,11 +45,11 @@ class ChatbotScreen extends StatefulWidget {
 class _ChatbotScreenState extends State<ChatbotScreen> {
   // Store messages here. Format: {text: String, isUser: bool}
   final List<Map<String, dynamic>> _messages = [];
-  
+
   // Controller to read and clear input
   final TextEditingController _textController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  
+
   bool _isTyping = false;
 
   // Session Management
@@ -87,7 +87,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
   // Handle sending a message
   void _handleSubmitted(String text) {
     final trimmedText = text.trim();
-    if (trimmedText.isEmpty) return; 
+    if (trimmedText.isEmpty) return;
 
     _textController.clear();
 
@@ -95,7 +95,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
       _messages.add({'text': trimmedText, 'isUser': true});
       _isTyping = true;
     });
-    
+
     _scrollToBottom();
     _sendMessageToBackend(trimmedText);
   }
@@ -115,9 +115,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
       "sessionId": _sessionId,
       "route": kRoute,
       "chatInput": userQuery,
-      "metadata": {
-        "userId": "" 
-      }
+      "metadata": {"userId": ""},
     };
 
     try {
@@ -129,9 +127,9 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
 
       if (response.statusCode == 200) {
         final dynamic data = jsonDecode(response.body);
-        
+
         String botOutput = "No response text found.";
-        
+
         if (data is List && data.isNotEmpty) {
           botOutput = data[0]['output'] ?? "Empty response";
         } else if (data is Map<String, dynamic>) {
@@ -142,14 +140,11 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
           setState(() {
             _isTyping = false;
             // Clean up thinking process if exposed
-            final cleanOutput = botOutput.contains('</think>') 
-                ? botOutput.split('</think>').last.trim() 
+            final cleanOutput = botOutput.contains('</think>')
+                ? botOutput.split('</think>').last.trim()
                 : botOutput;
-                
-            _messages.add({
-              'text': cleanOutput,
-              'isUser': false
-            });
+
+            _messages.add({'text': cleanOutput, 'isUser': false});
           });
           _scrollToBottom();
         }
@@ -234,14 +229,14 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
                 ),
               ),
             Expanded(
-              child: _messages.isEmpty 
-                  ? _buildWelcomeView(greetingText, placeholderText) 
+              child: _messages.isEmpty
+                  ? _buildWelcomeView(greetingText, placeholderText)
                   : _buildChatListView(),
             ),
             if (_isTyping)
               const LinearProgressIndicator(
-                backgroundColor: Colors.transparent, 
-                valueColor: AlwaysStoppedAnimation<Color>(kGreenAccent)
+                backgroundColor: Colors.transparent,
+                valueColor: AlwaysStoppedAnimation<Color>(kGreenAccent),
               ),
             BottomInputArea(
               controller: _textController,
@@ -299,28 +294,36 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
         final msg = _messages[index];
         final isUser = msg['isUser'] as bool;
         final isError = msg['isError'] ?? false;
-        
+
         return Align(
           alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
           child: Container(
             margin: const EdgeInsets.only(bottom: 12),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: isUser 
-                  ? kUserBubbleColor 
+              color: isUser
+                  ? kUserBubbleColor
                   : (isError ? Colors.red[50] : kBotBubbleColor),
               borderRadius: BorderRadius.only(
                 topLeft: const Radius.circular(16),
                 topRight: const Radius.circular(16),
-                bottomLeft: isUser ? const Radius.circular(16) : const Radius.circular(2),
-                bottomRight: isUser ? const Radius.circular(2) : const Radius.circular(16),
+                bottomLeft: isUser
+                    ? const Radius.circular(16)
+                    : const Radius.circular(2),
+                bottomRight: isUser
+                    ? const Radius.circular(2)
+                    : const Radius.circular(16),
               ),
             ),
-            constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.8),
+            constraints: BoxConstraints(
+              maxWidth: MediaQuery.of(context).size.width * 0.8,
+            ),
             child: Text(
               msg['text'],
               style: TextStyle(
-                color: isUser ? Colors.white : (isError ? Colors.red[900] : Colors.black87),
+                color: isUser
+                    ? Colors.white
+                    : (isError ? Colors.red[900] : Colors.black87),
                 fontSize: 15,
                 height: 1.4,
               ),
@@ -332,6 +335,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
   }
 }
 
+// --- Modified Input Area ---
 // --- Modified Input Area ---
 class BottomInputArea extends StatefulWidget {
   final TextEditingController controller;
@@ -360,7 +364,12 @@ class _BottomInputAreaState extends State<BottomInputArea> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(left: 16.0, right: 16.0, bottom: 16.0, top: 8.0),
+      padding: const EdgeInsets.only(
+        left: 16.0,
+        right: 16.0,
+        bottom: 16.0,
+        top: 8.0,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
@@ -372,7 +381,8 @@ class _BottomInputAreaState extends State<BottomInputArea> {
             ),
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end, // Align items to bottom for multiline growth
+              crossAxisAlignment: CrossAxisAlignment
+                  .end, // Align items to bottom for multiline growth
               children: [
                 // Text Input
                 Expanded(
@@ -380,14 +390,17 @@ class _BottomInputAreaState extends State<BottomInputArea> {
                     padding: const EdgeInsets.symmetric(horizontal: 12.0),
                     child: CallbackShortcuts(
                       bindings: {
-                        const SingleActivator(LogicalKeyboardKey.enter, includeRepeats: false): () {
+                        const SingleActivator(
+                          LogicalKeyboardKey.enter,
+                          includeRepeats: false,
+                        ): () {
                           widget.onSubmitted(widget.controller.text);
                         },
                       },
                       child: TextField(
                         focusNode: _focusNode,
                         controller: widget.controller,
-                        maxLines: 5, 
+                        maxLines: 5,
                         minLines: 1,
                         maxLength: 300,
                         keyboardType: TextInputType.multiline,
@@ -396,14 +409,14 @@ class _BottomInputAreaState extends State<BottomInputArea> {
                           hintText: '輸入訊息...',
                           border: InputBorder.none,
                           counterText: '', // Hide default counter
-                          contentPadding: EdgeInsets.symmetric(vertical: 14.0), 
+                          contentPadding: EdgeInsets.symmetric(vertical: 14.0),
                         ),
                         style: const TextStyle(fontSize: 14),
                       ),
                     ),
                   ),
                 ),
-                
+
                 // Action Buttons
                 Padding(
                   padding: const EdgeInsets.only(bottom: 4.0),
