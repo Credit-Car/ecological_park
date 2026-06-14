@@ -2,4 +2,4 @@
 
 # run the below commands
 docker build -t wetland:latest . 
-docker run -d --name wetland -p 6789:6789 wetland:latest
+docker run -d --name wetland -p 8080:80 wetland:latest

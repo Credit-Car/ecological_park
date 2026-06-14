@@ -1,55 +1,36 @@
-# # --- Stage 1: Build the Web App ---
-# FROM ghcr.io/cirruslabs/flutter:stable AS build
-
-# # 1. Setup permissions for the flutter user
-# USER root
-# RUN useradd -m flutter && \
-#     chown -R flutter:flutter /sdks/flutter
-
-# USER flutter
-# WORKDIR /home/flutter/app
-
-# # 2. Optimized Dependency layer (Caching)
-# # We copy only these first so 'flutter pub get' isn't re-run 
-# # unless your dependencies actually change.
-# COPY --chown=flutter:flutter pubspec.yaml pubspec.lock ./
-# RUN flutter pub get
-
-# # 3. Copy the rest of the source code
-# COPY --chown=flutter:flutter . .
-
-# # 4. Build for web in release mode
-# RUN flutter build web --release
-
-# # --- Stage 2: Serve with Nginx ---
-# FROM nginx:alpine
-
-# # 5. Copy your custom Nginx config (critical for routing)
-# COPY nginx.conf /etc/nginx/conf.d/default.conf
-
-# # 6. Copy the built web assets from the build stage
-# COPY --from=build /home/flutter/app/build/web /usr/share/nginx/html
-
-# # Standard web port
-# EXPOSE 80
-
-# CMD ["nginx", "-g", "daemon off;"]
-
-# --- Stage 1: Build ---
+# ==========================================
+# Stage 1: Build the Flutter Web Application
+# ==========================================
+# We use a reliable, pre-built community image that contains the Flutter SDK
 FROM ghcr.io/cirruslabs/flutter:stable AS build
-USER root
-RUN useradd -m flutter && chown -R flutter:flutter /sdks/flutter
-USER flutter
-WORKDIR /home/flutter/app
-COPY --chown=flutter:flutter pubspec.* ./
+
+# Set the working directory inside the container
+WORKDIR /app
+
+# Copy pubspec files first to cache dependencies
+COPY pubspec.* ./
 RUN flutter pub get
-COPY --chown=flutter:flutter . .
+
+# Copy the rest of your application code
+COPY . .
+
+# Build the web application in release mode
 RUN flutter build web --release
 
-# --- Stage 2: Serve ---
+# ==========================================
+# Stage 2: Serve the App using Nginx
+# ==========================================
+# We use a tiny, lightweight web server image
 FROM nginx:alpine
-# Use a basic Nginx config that only handles Flutter routing
-COPY --from=build /home/flutter/app/build/web /usr/share/nginx/html
-# We don't need the complex proxy logic here anymore!
+
+# Copy the custom Nginx configuration we made in Step 2
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# Copy the compiled static files from Stage 1 into the Nginx server directory
+COPY --from=build /app/build/web /usr/share/nginx/html
+
+# Expose port 80 inside the container
 EXPOSE 80
+
+# Start Nginx
 CMD ["nginx", "-g", "daemon off;"]
