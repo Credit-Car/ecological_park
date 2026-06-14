@@ -1,26 +1,25 @@
 import '../models/places.dart';
 import '../models/trip.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart'; // Import to provide the unified LatLng model
 
 class MockData {
   static const String mockUserId = 'user_999';
 
-  static const List<Places> availablePlaces = [
+  static final List<Places> availablePlaces = [
     Places(
       id: 'p001',
       name: 'Visitor Service Center',
-      category: 'Facility',
+      category: '園區設施',
       detail: 'Introduction to the geographical location and regional context by the Township Office and Agriculture & Tourism Section.',
-      lat: 23.6579,
-      lng: 121.4095,
+      location: const LatLng(23.6579, 121.4095), // FIX: Mapped to your updated unified LatLng object type
       imageUrl: 'assets/images/visitor-center.jpg',
     ),
     Places(
       id: 'p002',
       name: 'Wooden Boardwalk Area',
-      category: 'Scenic Spot',
+      category: '自然景觀t',
       detail: 'Wetland ecology interpretation area with rich biodiversity and walking paths.',
-      lat: 23.6585,
-      lng: 121.4102,
+      location: const LatLng(23.6585, 121.4102), // FIX: Resolved missing parameter keys and converted structure
       imageUrl: 'assets/images/boardwalk.jpg',
     ),
     Places(
@@ -28,8 +27,7 @@ class MockData {
       name: 'Water Willow Area',
       category: 'Wildlife',
       detail: 'Habitat for fireflies and aquatic plants; learn about firefly ecology.',
-      lat: 23.6590,
-      lng: 121.4108,
+      location: const LatLng(23.6590, 121.4108),
       imageUrl: 'assets/images/water-willow.png',
     ),
     Places(
@@ -37,8 +35,7 @@ class MockData {
       name: 'Egret Bridge',
       category: 'Scenic Spot',
       detail: 'Overview of the Fudeng Creek watershed and surrounding wetland environment.',
-      lat: 23.6582,
-      lng: 121.4098,
+      location: const LatLng(23.6582, 121.4098),
       imageUrl: 'assets/images/egret-bridge.jpg',
     ),
     Places(
@@ -46,8 +43,7 @@ class MockData {
       name: 'Shin-Lu Farm',
       category: 'Culture',
       detail: 'Experience Barago fishing culture and local indigenous way of life.',
-      lat: 23.6573,
-      lng: 121.4089,
+      location: const LatLng(23.6573, 121.4089),
       imageUrl: 'assets/images/shin-lu.jpg',
     ),
     Places(
@@ -55,8 +51,7 @@ class MockData {
       name: 'Red Tile House',
       category: 'Culture',
       detail: 'Waterside dining experience showcasing slow food and traditional cuisine.',
-      lat: 23.6568,
-      lng: 121.4085,
+      location: const LatLng(23.6568, 121.4085),
       imageUrl: 'assets/images/red-tile.png',
     ),
   ];
@@ -71,18 +66,19 @@ class MockData {
         startDate: DateTime(2026, 4, 29),
         endDate: DateTime(2026, 4, 29),
         stops: [
-          TripStop(
-            place: availablePlaces[0], // Visitor Center
+          // FIX: Updated all sub-instantiations from 'TripStop' to 'Stop' to match trip.dart
+          Stop(
+            place: availablePlaces[0], 
             scheduledTime: DateTime(2026, 4, 29, 09, 00),
             customNotes: 'Group 1 & 2: Understand regional context and introduction.',
           ),
-          TripStop(
-            place: availablePlaces[1], // Boardwalk
+          Stop(
+            place: availablePlaces[1], 
             scheduledTime: DateTime(2026, 4, 29, 09, 40),
             customNotes: 'Group 3 & 4: Observe wetland ecology and plant species.',
           ),
-          TripStop(
-            place: availablePlaces[2], // Water Willow
+          Stop(
+            place: availablePlaces[2], 
             scheduledTime: DateTime(2026, 4, 29, 10, 20),
             customNotes: 'Group 5 & 6: Learn about firefly habitats.',
           ),
@@ -96,18 +92,18 @@ class MockData {
         startDate: DateTime(2026, 4, 29),
         endDate: DateTime(2026, 4, 29),
         stops: [
-          TripStop(
-            place: availablePlaces[3], // Egret Bridge
+          Stop(
+            place: availablePlaces[3], 
             scheduledTime: DateTime(2026, 4, 29, 11, 00),
             customNotes: 'Group 7 & 8: Study watershed and ecosystem connections.',
           ),
-          TripStop(
-            place: availablePlaces[4], // Shin-Lu Farm
+          Stop(
+            place: availablePlaces[4], 
             scheduledTime: DateTime(2026, 4, 29, 12, 00),
             customNotes: 'Group 9 & 10: Experience indigenous fishing culture.',
           ),
-          TripStop(
-            place: availablePlaces[5], // Red Tile House
+          Stop(
+            place: availablePlaces[5], 
             scheduledTime: DateTime(2026, 4, 29, 13, 00),
             customNotes: 'Group 11 & 12: Lunch and slow food experience.',
           ),

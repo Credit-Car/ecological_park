@@ -7,7 +7,7 @@ class Trip {
   final String type;
   final DateTime startDate;
   final DateTime endDate;
-  final List<TripStop> stops;
+  final List<Stop> stops; // Changed from TripStop to Stop to match your page layout
 
   Trip({
     required this.id,
@@ -20,12 +20,12 @@ class Trip {
   });
 }
 
-class TripStop {
+class Stop {
   final Places place;
   final DateTime scheduledTime;
   final String? customNotes;
 
-  TripStop({
+  Stop({
     required this.place,
     required this.scheduledTime,
     this.customNotes,

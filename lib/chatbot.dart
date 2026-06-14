@@ -1,3 +1,5 @@
+// ignore_for_file: prefer_final_fields, use_build_context_synchronously
+
 import 'dart:convert'; // For JSON encoding/decoding
 import 'dart:io'; // To detect platform for localhost
 import 'package:flutter/foundation.dart'; // To detect web
@@ -5,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // For LogicalKeyboardKey
 import 'package:http/http.dart' as http; // HTTP requests
 import 'package:uuid/uuid.dart'; // For Session ID generation
+import '../models/places.dart'; // Ensure correct mapping import path
 import 'l10n/app_localizations.dart';
 
 // --- Custom Colors ---
@@ -13,39 +16,75 @@ const Color kLightGrey = Color(0xFFF0F0F0);
 const Color kBotBubbleColor = Color(0xFFE0E0E0);
 const Color kUserBubbleColor = Colors.teal;
 
+// --- Configuration (Mirrors chat-widget.js Config) ---
+// If testing on Android Emulator, use 'http://10.0.2.2:5454/webhook'
+// If testing on iOS Simulator or Web, use 'http://localhost:5454/webhook'
 const String kBaseUrl = 'http://localhost:5678/webhook/282b07f6-e889-432e-8b1b-f31979563281/chat';
 const String kRoute = 'general';
 
 class ChatbotApp extends StatelessWidget {
-  const ChatbotApp({super.key});
+  final Places? initialPlace; // Slot to intercept incoming map data structures
+
+  const ChatbotApp({super.key, this.initialPlace});
 
   @override
   Widget build(BuildContext context) {
-    return const ChatbotScreen();
+    return ChatbotScreen(initialPlace: initialPlace);
   }
 }
 
 class ChatbotScreen extends StatefulWidget {
-  const ChatbotScreen({super.key});
+  final Places? initialPlace; 
+
+  const ChatbotScreen({super.key, this.initialPlace});
 
   @override
   State<ChatbotScreen> createState() => _ChatbotScreenState();
 }
 
 class _ChatbotScreenState extends State<ChatbotScreen> {
+  // Store messages here. Format: {text: String, isUser: bool}
   final List<Map<String, dynamic>> _messages = [];
+  
+  // Controller to read and clear input
   final TextEditingController _textController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   
   bool _isTyping = false;
+
+  // Session Management
   late String _sessionId;
 
   @override
   void initState() {
     super.initState();
     _sessionId = const Uuid().v4();
+    
+    // FIX: Intercept contextual payloads passed forward by map clicks
+    if (widget.initialPlace != null) {
+      _initializeContextualMapChat();
+    }
   }
 
+  /// Injects a prompt automatically if a traveler clicked 'Ask Guide' from a map card
+  void _initializeContextualMapChat() {
+    final targetName = widget.initialPlace!.name;
+    final targetDetail = widget.initialPlace!.detail;
+
+    // 1. Render user query bubble instantly on screen
+    _messages.add({
+      'text': '你好！我想瞭解關於「$targetName」的特色與周邊生態。',
+      'isUser': true,
+    });
+
+    // 2. Set progress indicators active while the webhook pipeline compiles
+    _isTyping = true;
+
+    // 3. Dispatch background sync directly to your N8N/Webhook container server
+    _sendMessageToBackend('請跟我介紹「$targetName」這個景點。相關背景與詳細資訊內容如下：$targetDetail。請完全使用繁體中文進行回覆。');
+  }
+
+  // Handle sending a message
   void _handleSubmitted(String text) {
     final trimmedText = text.trim();
     if (trimmedText.isEmpty) return; 
@@ -61,7 +100,9 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
     _sendMessageToBackend(trimmedText);
   }
 
+  // Implements the specific JSON payload structure from chat-widget.js
   Future<void> _sendMessageToBackend(String userQuery) async {
+    // Correct localhost for Android Emulator if needed
     String urlString = kBaseUrl;
     if (!kIsWeb && Platform.isAndroid && kBaseUrl.contains('localhost')) {
       urlString = kBaseUrl.replaceFirst('localhost', '10.0.2.2');
@@ -88,6 +129,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
 
       if (response.statusCode == 200) {
         final dynamic data = jsonDecode(response.body);
+        
         String botOutput = "No response text found.";
         
         if (data is List && data.isNotEmpty) {
@@ -99,6 +141,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
         if (mounted) {
           setState(() {
             _isTyping = false;
+            // Clean up thinking process if exposed
             final cleanOutput = botOutput.contains('</think>') 
                 ? botOutput.split('</think>').last.trim() 
                 : botOutput;
@@ -123,7 +166,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
       setState(() {
         _isTyping = false;
         _messages.add({
-          'text': "Error: Could not connect to assistant.",
+          'text': "錯誤：無法連線至導覽助理，請檢查您的網路連線。",
           'isUser': false,
           'isError': true,
         });
@@ -147,12 +190,18 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final String greetingText = l10n?.chatbot_greeting ?? "How can I help you?";
-    final String placeholderText = l10n?.chatbot_placeholder ?? "Ask about destinations, itineraries, or travel tips.";
-    final String labelAsk = l10n?.chatbot_btn_ask ?? "Ask Guide";
+    final String greetingText = l10n?.chatbot_greeting ?? "有什麼我可以幫您的嗎？";
+    final String placeholderText = l10n?.chatbot_placeholder ?? "您可以詢問關於景點、行程規劃或旅遊建議。";
+    final String labelAsk = l10n?.chatbot_btn_ask ?? "智慧導覽";
 
     return Scaffold(
       appBar: AppBar(
+        leading: Navigator.canPop(context) 
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.black87, size: 18),
+                onPressed: () => Navigator.pop(context),
+              ) 
+            : null,
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -165,6 +214,25 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
       body: SafeArea(
         child: Column(
           children: <Widget>[
+            // Floating Navigator header trace panel if custom context is active
+            if (widget.initialPlace != null && _messages.length <= 2)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                color: kGreenAccent.withOpacity(0.05),
+                child: Row(
+                  children: [
+                    const Icon(Icons.info_outline, size: 14, color: kGreenAccent),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        "目前導覽景點：${widget.initialPlace!.name}",
+                        style: const TextStyle(fontSize: 12, color: kGreenAccent, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             Expanded(
               child: _messages.isEmpty 
                   ? _buildWelcomeView(greetingText, placeholderText) 
@@ -185,7 +253,6 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
     );
   }
 
-  // Pass localized strings arguments safely down into the welcome layout tree
   Widget _buildWelcomeView(String greeting, String placeholder) {
     return Center(
       child: SingleChildScrollView(
@@ -196,7 +263,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: kGreenAccent.withValues(alpha: 0.1),
+                color: kGreenAccent.withOpacity(0.1),
                 shape: BoxShape.circle,
               ),
               child: const Icon(
@@ -208,21 +275,13 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
             const SizedBox(height: 24),
             Text(
               greeting,
-              style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.w600,
-                color: Colors.black87,
-              ),
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: Colors.black87),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 12),
             Text(
               placeholder,
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey[600],
-                height: 1.5,
-              ),
+              style: TextStyle(fontSize: 16, color: Colors.grey[600], height: 1.5),
               textAlign: TextAlign.center,
             ),
           ],
@@ -273,6 +332,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
   }
 }
 
+// --- Modified Input Area ---
 class BottomInputArea extends StatefulWidget {
   final TextEditingController controller;
   final Function(String) onSubmitted;
@@ -288,6 +348,7 @@ class BottomInputArea extends StatefulWidget {
 }
 
 class _BottomInputAreaState extends State<BottomInputArea> {
+  // FocusNode not needed for CallbackShortcuts if we don't need other focus logic
   final FocusNode _focusNode = FocusNode();
 
   @override
@@ -306,13 +367,14 @@ class _BottomInputAreaState extends State<BottomInputArea> {
         children: [
           Container(
             decoration: BoxDecoration(
-              color: kLightGrey.withValues(alpha: 0.6),
+              color: kLightGrey.withOpacity(0.6),
               borderRadius: BorderRadius.circular(24),
             ),
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
+              crossAxisAlignment: CrossAxisAlignment.end, // Align items to bottom for multiline growth
               children: [
+                // Text Input
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 12.0),
@@ -331,9 +393,9 @@ class _BottomInputAreaState extends State<BottomInputArea> {
                         keyboardType: TextInputType.multiline,
                         textInputAction: TextInputAction.newline,
                         decoration: const InputDecoration(
-                          hintText: 'Aa',
+                          hintText: '輸入訊息...',
                           border: InputBorder.none,
-                          counterText: '',
+                          counterText: '', // Hide default counter
                           contentPadding: EdgeInsets.symmetric(vertical: 14.0), 
                         ),
                         style: const TextStyle(fontSize: 14),
@@ -341,11 +403,14 @@ class _BottomInputAreaState extends State<BottomInputArea> {
                     ),
                   ),
                 ),
+                
+                // Action Buttons
                 Padding(
                   padding: const EdgeInsets.only(bottom: 4.0),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      // Explicit Send Button
                       Container(
                         margin: const EdgeInsets.only(right: 4.0),
                         decoration: const BoxDecoration(
@@ -355,7 +420,7 @@ class _BottomInputAreaState extends State<BottomInputArea> {
                         child: IconButton(
                           icon: const Icon(Icons.send, color: Colors.white, size: 20),
                           onPressed: () => widget.onSubmitted(widget.controller.text),
-                          tooltip: 'Send Message',
+                          tooltip: '發送訊息',
                         ),
                       ),
                     ],
@@ -367,7 +432,7 @@ class _BottomInputAreaState extends State<BottomInputArea> {
           const SizedBox(height: 8),
           const Center(
             child: Text(
-              'Please double-check responses.',
+              'AI 導覽生成內容僅供參考，請再次確認景點實際資訊。',
               style: TextStyle(color: Colors.grey, fontSize: 8),
             ),
           ),

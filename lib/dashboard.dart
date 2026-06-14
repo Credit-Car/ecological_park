@@ -1,8 +1,11 @@
+// ignore_for_file: prefer_final_fields, use_build_context_synchronously
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:travel_app/dataconnect_generated/generated.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'mockdata.dart';
 import '../models/places.dart';
 import 'l10n/app_localizations.dart';
@@ -19,7 +22,7 @@ class _DashboardState extends State<Dashboard> {
   List<Places> _allDestinations = []; 
   late Future<List<Places>> allDestinationsFuture;
 
-Future<List<Places>> fetchPlaces() async {
+  Future<List<Places>> fetchPlaces() async {
     try {
       final res = await ExampleConnector.instance.listPlaces().execute();
       
@@ -27,18 +30,38 @@ Future<List<Places>> fetchPlaces() async {
         return MockData.availablePlaces;
       }
 
-      // Map Backend data to your Places model
-      return res.data.places.map((e) => Places(
-        id: e.placeId,
-        name: e.name,
-        category: 'Explore', 
-        imageUrl: (e.images != null && e.images!.isNotEmpty) 
-            ? e.images!.first 
-            : 'https://via.placeholder.com/150',
-        detail: e.description ?? '',
-        lat: double.tryParse(e.coordinates.split(',').first) ?? 0.0,
-        lng: double.tryParse(e.coordinates.split(',').last) ?? 0.0,
-      )).toList();
+      // 👇 FIX 1: Filter out custom stops that belong to individual itineraries
+      final officialLandmarks = res.data.places.where((e) {
+        final desc = e.description?.trim() ?? '';
+        // If the description tracks a routeId metadata block, it's not a global asset!
+        return !(desc.startsWith('{') && desc.contains('routeId'));
+      }).toList();
+
+      return officialLandmarks.map((e) {
+        final parts = e.coordinates.split(',');
+        final lat = parts.isNotEmpty ? double.tryParse(parts.first.trim()) ?? 0.0 : 0.0;
+        final lng = parts.length > 1 ? double.tryParse(parts.last.trim()) ?? 0.0 : 0.0;
+
+        // 👇 FIX 2: Apply your system's hardcoded category structure 
+        String assignedCategory = 'Scenic Spot';
+        switch (e.placeId) {
+          case 'p001': assignedCategory = 'Facility'; break;
+          case 'p002': assignedCategory = 'Wildlife'; break;
+          case 'p003':
+          case 'p004': assignedCategory = 'Scenic Spot'; break;
+          case 'p005':
+          case 'p006': assignedCategory = 'Culture'; break;
+        }
+
+        return Places(
+          id: e.placeId,
+          name: e.name,
+          category: assignedCategory, // Swapped generic 'Explore' for hardcoded keys
+          imageUrl: (e.images != null && e.images!.isNotEmpty) ? e.images!.join(',') : 'https://via.placeholder.com/150',
+          detail: e.description ?? '',
+          location: LatLng(lat, lng),
+        );
+      }).toList();
 
     } catch (e) {
       debugPrint("Backend unreachable, using MockData: $e");
@@ -53,54 +76,23 @@ Future<List<Places>> fetchPlaces() async {
     super.initState();
     allDestinationsFuture = fetchPlaces();
     allDestinationsFuture.then((destinations) {
-      setState(() {
-        _allDestinations = destinations;
-        // Initially show only 7 random items
-        filteredDestinations = destinations.take(7).toList();
-      });
+      if (mounted) {
+        setState(() {
+          _allDestinations = destinations;
+          filteredDestinations = destinations.take(7).toList();
+        });
+      }
     });
   }
-  
-  // [
-  //   Destination(
-  //     name: 'Lakeside Restaurant',
-  //     category: 'Restaurants',
-  //     image: 'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/09/a8/32/57/caption.jpg?w=1200&h=-1&s=1',
-  //     location: 'Shoufeng, Hualien',
-  //     rating: 4.5,
-  //     price: '\$150',
-  //     description: 'The Lakeside Restaurant at NDHU offers a peaceful dining experience with a stunning view of the central lake. It is a favorite spot for students and faculty to enjoy local Hualien cuisine.',
-  //   ),
-  //   Destination(
-  //     name: 'NDHU Library',
-  //     category: 'Buildings',
-  //     image: 'assets/images/ndhu_library.png',
-  //     location: 'Shoufeng, Hualien',
-  //     rating: 4.9,
-  //     price: 'Free',
-  //     description: 'The National Dong Hwa University Library is an architectural masterpiece. It serves as the primary research hub for students and offers breathtaking views of the campus mountains.',
-  //   ),
-  // ];
-
-
-
-  // @override
-  // void initState() {
-  //   super.initState();
-  //   filteredDestinations = allDestinations;
-  // }
 
   void _onSearchChanged(String value) {
     setState(() {
       if (value.isEmpty) {
-        // If search is cleared, show the initial 7 random places again
-        // (For a sticky selection, store the initial random set in another variable)
         filteredDestinations = _allDestinations.take(7).toList();
       } else {
-        // Search through ALL destinations
         filteredDestinations = _allDestinations
             .where((d) => d.name.toLowerCase().contains(value.toLowerCase()) ||
-                         d.category.toLowerCase().contains(value.toLowerCase()))
+                          d.category.toLowerCase().contains(value.toLowerCase()))
             .toList();
       }
     });
@@ -109,13 +101,14 @@ Future<List<Places>> fetchPlaces() async {
   void _refreshDashboard() {
     setState(() {
       _searchController.clear();
-      // shuffle the existing list to get a new set of 7
       _allDestinations.shuffle();
       filteredDestinations = _allDestinations.take(7).toList();
     });
   }
 
   Widget buildDestinationCard(Places data) {
+    final String previewUrl = data.imageUrl.split(',').first.trim();
+
     return GestureDetector(
       onTap: () {
         Navigator.push(
@@ -138,9 +131,9 @@ Future<List<Places>> fetchPlaces() async {
             ),
             ClipRRect(
               borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
-              child: data.imageUrl.startsWith('http') 
+              child: previewUrl.startsWith('https') 
                 ? CachedNetworkImage(
-                    imageUrl: data.imageUrl.split(',').first,
+                    imageUrl: previewUrl,
                     memCacheHeight: (180 * MediaQuery.of(context).devicePixelRatio).toInt(),
                     height: 180,
                     width: double.infinity,
@@ -153,7 +146,7 @@ Future<List<Places>> fetchPlaces() async {
                     errorWidget: (context, url, error) => _buildErrorPlaceholder(),
                   )
                 : Image.asset(
-                    data.imageUrl.split(',').first, // Loads from assets/images/
+                    previewUrl, 
                     height: 180,
                     width: double.infinity,
                     fit: BoxFit.cover,
@@ -223,9 +216,8 @@ Future<List<Places>> fetchPlaces() async {
   }
 }
 
-
 class DetailsPage extends StatefulWidget {
-  final Places destination; // Changed from Destination
+  final Places destination; 
   const DetailsPage({super.key, required this.destination});
 
   @override
@@ -234,18 +226,19 @@ class DetailsPage extends StatefulWidget {
 
 class _DetailsPageState extends State<DetailsPage> {
   int _currentPage = 0;
+
   String get placePrice {
-    return widget.destination.category == 'Culture'
-        ? '\$250'
-        : 'Free';
+    return widget.destination.category == 'Culture' ? '\$250' : 'Free';
   }
 
-  String get placeLocation {
-    return "Guangfu, Hualien";
-  }
   @override
   Widget build(BuildContext context) {
-    final List<String> images = widget.destination.imageUrl.split(',');
+    final List<String> images = widget.destination.imageUrl
+        .split(',')
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: Stack(
@@ -257,43 +250,47 @@ class _DetailsPageState extends State<DetailsPage> {
               child: Stack(
                 alignment: Alignment.bottomCenter,
                 children: [
-                  PageView.builder(
-                    itemCount: images.length,
-                    onPageChanged: (index) {
-                      setState(() {
-                        _currentPage = index;
-                      });
-                    },
-                    itemBuilder: (context, index) {
-                      if (images[index].startsWith('assets/')) {
-                        return Image.asset(
-                          images[index],
-                          fit: BoxFit.cover,
+                  images.isEmpty
+                      ? Container(
+                          color: Colors.grey[300],
                           width: double.infinity,
-                        );
-                      } else {
-                        return CachedNetworkImage(
-                          imageUrl: images[index],
-                          fit: BoxFit.cover,
-                          placeholder: (context, url) => Container(
-                            color: Colors.grey[200],
-                            child: const Center(
-                              child: CircularProgressIndicator(),
-                            ),
-                          ),
-                          errorWidget: (context, url, error) => Container(
-                            color: Colors.grey[300],
-                            child: const Center(
-                              child: Icon(Icons.image_not_supported),
-                            ),
-                          ),
-                        );
-                      }
-},
-                  ),
+                          child: const Center(child: Icon(Icons.image_not_supported, size: 40)),
+                        )
+                      : PageView.builder(
+                          itemCount: images.length,
+                          onPageChanged: (index) {
+                            setState(() {
+                              _currentPage = index;
+                            });
+                          },
+                          itemBuilder: (context, index) {
+                            final String currentPath = images[index];
+
+                            if (currentPath.startsWith('assets/')) {
+                              return Image.asset(
+                                currentPath,
+                                fit: BoxFit.cover,
+                                width: double.infinity,
+                              );
+                            } else {
+                              return CachedNetworkImage(
+                                imageUrl: currentPath,
+                                fit: BoxFit.cover,
+                                placeholder: (context, url) => Container(
+                                  color: Colors.grey[200],
+                                  child: const Center(child: CircularProgressIndicator()),
+                                ),
+                                errorWidget: (context, url, error) => Container(
+                                  color: Colors.grey[300],
+                                  child: const Center(child: Icon(Icons.broken_image, size: 30, color: Colors.grey)),
+                                ),
+                              );
+                            }
+                          },
+                        ),
                   if (images.length > 1)
                     Positioned(
-                      bottom: 50, // Just above the white content sheet
+                      bottom: 50, 
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: List.generate(images.length, (index) {
@@ -306,7 +303,7 @@ class _DetailsPageState extends State<DetailsPage> {
                               shape: BoxShape.circle,
                               color: _currentPage == index 
                                   ? Colors.white 
-                                  : Colors.white.withValues(alpha: 0.5),
+                                  : Colors.white.withOpacity(0.5),
                             ),
                           );
                         }),
@@ -317,7 +314,6 @@ class _DetailsPageState extends State<DetailsPage> {
             ),
           ),
 
-          // Back Button
           Positioned(
             top: 50,
             left: 20,
@@ -330,7 +326,6 @@ class _DetailsPageState extends State<DetailsPage> {
             ),
           ),
 
-          // 3. The Content Sheet
           Positioned.fill(
             top: MediaQuery.of(context).size.height * 0.4,
             child: Container(
@@ -343,7 +338,6 @@ class _DetailsPageState extends State<DetailsPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Dynamic Title and Price
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -357,7 +351,6 @@ class _DetailsPageState extends State<DetailsPage> {
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
                             Text(placePrice, style: const TextStyle(fontSize: 22, color: Colors.teal, fontWeight: FontWeight.bold)),
-                            //const Text("/person", style: TextStyle(color: Colors.grey, fontSize: 12)),
                           ],
                         ),
                       ],
@@ -366,18 +359,12 @@ class _DetailsPageState extends State<DetailsPage> {
                     Row(
                       children: [
                         const Icon(Icons.location_on, color: Colors.blueAccent, size: 18),
-                        Text(placeLocation, style: const TextStyle(color: Colors.grey)),
-
-                        Spacer(),
-
+                        Text("${widget.destination.location.latitude}, ${widget.destination.location.longitude}", style: const TextStyle(color: Colors.grey)),
+                        const Spacer(),
                         ElevatedButton.icon(
                           onPressed: () {
-                            // Copy location to clipboard
-                            // import 'package:flutter/services.dart'; needs to be imported if not available, 
-                            // but usually available via material.dart -> services.dart
-                            // actually it is in services.dart. 
                             WidgetsBinding.instance.addPostFrameCallback((_) {
-                              Clipboard.setData(ClipboardData(text:placeLocation)).then((_) {
+                              Clipboard.setData(ClipboardData(text: "${widget.destination.location.latitude},${widget.destination.location.longitude}")).then((_) {
                                 if (!context.mounted) return;
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
@@ -400,49 +387,27 @@ class _DetailsPageState extends State<DetailsPage> {
                             ),
                           ),
                           icon: const Icon(Icons.copy, size: 16),
-                          label: Text( AppLocalizations.of(context)!.btn_add, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                          label: Text(AppLocalizations.of(context)!.btn_add, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
                         )
                       ],
                     ),
                     const SizedBox(height: 10),
-
-                    // Note Section
-                    Row(children: [
-                      const Icon(Icons.info_outline_rounded, size: 15, color: Colors.grey),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          "Note: Pictures were taken from East Rift Valley National Scenic Area website.",
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: Colors.grey.shade500,
-                            height: 1.4,
+                    Row(
+                      children: [
+                        const Icon(Icons.info_outline_rounded, size: 15, color: Colors.grey),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            "Note: Pictures were taken from East Rift Valley National Scenic Area website.",
+                            style: TextStyle(fontSize: 10, color: Colors.grey.shade500, height: 1.4),
                           ),
                         ),
-                      ),
-                    ],),
-                    // Reviews and Rating Row
-                    // Row(
-                    //   children: [
-                    //     _buildAvatarStack(),
-                    //     const SizedBox(width: 8),
-                    //     const Text("People Reviewed", style: TextStyle(color: Colors.grey, fontSize: 13)),
-                    //     const Spacer(),
-                    //     const Icon(Icons.star, color: Colors.orange, size: 20),
-                    //     Text(" ${widget.destination.rating} ", style: const TextStyle(fontWeight: FontWeight.bold)),
-                    //     const Text("/5", style: TextStyle(color: Colors.grey)),
-                    //   ],
-                    // ),
+                      ],
+                    ),
                     const SizedBox(height: 30),
-
-                    // Overview Section
                     Text(AppLocalizations.of(context)!.btn_overview, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                     Container(height: 3, width: 35, color: Colors.teal, margin: const EdgeInsets.only(top: 4)),
                     const SizedBox(height: 15),
-
-                    // Dynamic Description
-                    // display the decription in markdown format with line breaks and paragraphs
-                    
                     MarkdownBody(
                       data: widget.destination.detail,
                       styleSheet: MarkdownStyleSheet(
@@ -456,7 +421,6 @@ class _DetailsPageState extends State<DetailsPage> {
             ),
           ),
           
-          // Button to new view to display the place in embedded google maps
           Positioned(
             bottom: 20, left: 20, right: 20,
             child: Row(
@@ -471,7 +435,7 @@ class _DetailsPageState extends State<DetailsPage> {
                     ),
                     onPressed: () {},
                     icon: const Icon(Icons.library_add_check_outlined, color: Colors.white),
-                    label: Text( AppLocalizations.of(context)!.btn_add, style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                    label: Text(AppLocalizations.of(context)!.btn_add, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -484,8 +448,7 @@ class _DetailsPageState extends State<DetailsPage> {
                     ),
                     onPressed: () {},
                     icon: const Icon(Icons.map_outlined, color: Colors.white),
-                    label: Text( AppLocalizations.of(context)!.btn_view, style:  TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),),
-              
+                    label: Text(AppLocalizations.of(context)!.btn_view, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
                   ),
                 ),
               ],
@@ -495,26 +458,4 @@ class _DetailsPageState extends State<DetailsPage> {
       ),
     );
   }
-
-// Reviewer
-//   Widget _buildAvatarStack() {
-//     return SizedBox(
-//       width: 70, height: 30,
-//       child: Stack(
-//         children: List.generate(3, (index) {
-//           return Positioned(
-//             left: index * 15.0,
-//             child: CircleAvatar(
-//               radius: 15,
-//               backgroundColor: Colors.white,
-//               child: CircleAvatar(
-//                 radius: 13,
-//                 backgroundImage: NetworkImage('https://www.shutterstock.com/image-photo/smiling-african-american-millennial-businessman-600nw-1437938108.jpg'),
-//               ),
-//             ),
-//           );
-//         }),
-//       ),
-//     );
-//   }
 }

@@ -55,6 +55,7 @@ dependencies:
   provider: ^6.1.5+1
   flutter_bcrypt: ^1.0.8
   
+  just_audio: ^0.9.36
   # For Firestore (NoSQL database)
   # Optional: For user authentication
   # Optional: For file storage
