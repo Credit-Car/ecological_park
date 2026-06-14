@@ -19,7 +19,8 @@ const Color kUserBubbleColor = Colors.teal;
 // --- Configuration (Mirrors chat-widget.js Config) ---
 // If testing on Android Emulator, use 'http://10.0.2.2:5454/webhook'
 // If testing on iOS Simulator or Web, use 'http://localhost:5454/webhook'
-const String kBaseUrl = 'http://localhost:5678/webhook/282b07f6-e889-432e-8b1b-f31979563281/chat';
+const String kBaseUrl =
+    'http://localhost:5678/webhook/3c40d311-7996-4ed4-b2fa-c73bea5f4cf5/chat';
 const String kRoute = 'general';
 
 class ChatbotApp extends StatelessWidget {
@@ -34,7 +35,7 @@ class ChatbotApp extends StatelessWidget {
 }
 
 class ChatbotScreen extends StatefulWidget {
-  final Places? initialPlace; 
+  final Places? initialPlace;
 
   const ChatbotScreen({super.key, this.initialPlace});
 
@@ -59,7 +60,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
   void initState() {
     super.initState();
     _sessionId = const Uuid().v4();
-    
+
     // FIX: Intercept contextual payloads passed forward by map clicks
     if (widget.initialPlace != null) {
       _initializeContextualMapChat();
@@ -72,16 +73,15 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
     final targetDetail = widget.initialPlace!.detail;
 
     // 1. Render user query bubble instantly on screen
-    _messages.add({
-      'text': '你好！我想瞭解關於「$targetName」的特色與周邊生態。',
-      'isUser': true,
-    });
+    _messages.add({'text': '你好！我想瞭解關於「$targetName」的特色與周邊生態。', 'isUser': true});
 
     // 2. Set progress indicators active while the webhook pipeline compiles
     _isTyping = true;
 
     // 3. Dispatch background sync directly to your N8N/Webhook container server
-    _sendMessageToBackend('請跟我介紹「$targetName」這個景點。相關背景與詳細資訊內容如下：$targetDetail。請完全使用繁體中文進行回覆。');
+    _sendMessageToBackend(
+      '請跟我介紹「$targetName」這個景點。相關背景與詳細資訊內容如下：$targetDetail。請完全使用繁體中文進行回覆。',
+    );
   }
 
   // Handle sending a message
@@ -186,16 +186,21 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final String greetingText = l10n?.chatbot_greeting ?? "有什麼我可以幫您的嗎？";
-    final String placeholderText = l10n?.chatbot_placeholder ?? "您可以詢問關於景點、行程規劃或旅遊建議。";
+    final String placeholderText =
+        l10n?.chatbot_placeholder ?? "您可以詢問關於景點、行程規劃或旅遊建議。";
     final String labelAsk = l10n?.chatbot_btn_ask ?? "智慧導覽";
 
     return Scaffold(
       appBar: AppBar(
-        leading: Navigator.canPop(context) 
+        leading: Navigator.canPop(context)
             ? IconButton(
-                icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.black87, size: 18),
+                icon: const Icon(
+                  Icons.arrow_back_ios_new_rounded,
+                  color: Colors.black87,
+                  size: 18,
+                ),
                 onPressed: () => Navigator.pop(context),
-              ) 
+              )
             : null,
         title: Row(
           mainAxisSize: MainAxisSize.min,
@@ -213,16 +218,27 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
             if (widget.initialPlace != null && _messages.length <= 2)
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 color: kGreenAccent.withOpacity(0.05),
                 child: Row(
                   children: [
-                    const Icon(Icons.info_outline, size: 14, color: kGreenAccent),
+                    const Icon(
+                      Icons.info_outline,
+                      size: 14,
+                      color: kGreenAccent,
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         "目前導覽景點：${widget.initialPlace!.name}",
-                        style: const TextStyle(fontSize: 12, color: kGreenAccent, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: kGreenAccent,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ],
@@ -270,13 +286,21 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
             const SizedBox(height: 24),
             Text(
               greeting,
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: Colors.black87),
+              style: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+              ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 12),
             Text(
               placeholder,
-              style: TextStyle(fontSize: 16, color: Colors.grey[600], height: 1.5),
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey[600],
+                height: 1.5,
+              ),
               textAlign: TextAlign.center,
             ),
           ],
@@ -431,8 +455,13 @@ class _BottomInputAreaState extends State<BottomInputArea> {
                           shape: BoxShape.circle,
                         ),
                         child: IconButton(
-                          icon: const Icon(Icons.send, color: Colors.white, size: 20),
-                          onPressed: () => widget.onSubmitted(widget.controller.text),
+                          icon: const Icon(
+                            Icons.send,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                          onPressed: () =>
+                              widget.onSubmitted(widget.controller.text),
                           tooltip: '發送訊息',
                         ),
                       ),

@@ -1,5 +1,5 @@
 # ensure being logged in into docker
 
 # run the below commands
-docker build -t tour-guide:latest . 
-docker run -d --name tour-guide -p 8080:80 tour-guide:latest
+docker build -t wetland:latest . 
+docker run -d --name wetland -p 6789:6789 wetland:latest
